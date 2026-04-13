@@ -21,10 +21,12 @@
 | 조성 목록 | 워크플로우 내 여러 유리 조성을 AG Grid로 관리 (추가/편집/삭제) |
 | 조성 설계 | 산화물 배합비(wt%), 유리 종류 선택, 목표 물성 설정 (Tg, CTE, 밀도 등) |
 | 칭량 (Weighing) | 조성별 배치 중량 및 원료 칭량 설정 |
-| 용융 (Melting) | 용융 온도, 시간, 분위기 조건 설정 |
-| 소성 (Firing) | 소성 프로파일 (온도, 시간, 승온율) 설정 |
-| 열처리 (Heat Treatment) | 어닐링/템퍼링 조건 설정 |
-| 분석 (Analysis) | 분석 항목 및 방법 설정 |
+| 혼합 (Mixing) | 혼합 시간, 메모 설정 |
+| 성형 (Forming) | 형상(원형/바형) 및 치수 설정 |
+| 소성 (Firing) | 다단 소성 프로파일 (승온율, 목표 온도, 유지 시간) 설정 |
+| 열처리 (Heat Treatment) | 어닐링/템퍼링 온도, 시간, 냉각 방법 설정 |
+| 가공 (Machining) | 가공 형상 및 정밀 치수 설정 |
+| 분석 (Analysis) | 분석 항목별 측정값 입력 및 합격/불합격 판정 |
 
 - **SiLA 장비 선택**: 모든 스텝에서 실험 장비를 지정 가능
 - **AG Grid**: 조성 목록, 산화물 테이블, 물성 목표 테이블에 적용
@@ -90,13 +92,15 @@ src/
 │       ├── WorkflowEditor.vue   # 탭 기반 워크플로우 편집기
 │       ├── WorkflowList.vue     # AG Grid 워크플로우 목록
 │       ├── DeviceSelector.vue   # SiLA 장비 선택 컴포넌트
-│       └── steps/               # 7개 스텝 컴포넌트
+│       └── steps/               # 9개 스텝 컴포넌트
 │           ├── CompositionListStep.vue
 │           ├── CompositionStep.vue
 │           ├── WeighingStep.vue
-│           ├── MeltingStep.vue
+│           ├── MixingStep.vue
+│           ├── FormingStep.vue
 │           ├── FiringStep.vue
-│           ├── HeatTreatmentStep.vue
+│           ├── HeatTreatStep.vue
+│           ├── MachiningStep.vue
 │           └── AnalysisStep.vue
 ├── composables/
 │   ├── useTheme.ts              # 테마/폰트/크기 관리
