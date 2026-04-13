@@ -1,8 +1,15 @@
 # LAB Pilot Demo
 
-유리 소재 연구를 위한 AI 기반 실험 워크플로우 관리 플랫폼
+유리·세라믹 소재 연구를 위한 실험 워크플로우 자동화 플랫폼
 
 > **Live Demo:** [https://inkyu0317.github.io/lab-pilot-demo/](https://inkyu0317.github.io/lab-pilot-demo/)
+
+### 관련 프로젝트
+
+| 레포지토리 | 설명 |
+|-----------|------|
+| [sila-server-manager](https://github.com/InKyu0317/sila-server-manager) | CB310 저울 등 실험 장비 SiLA 2 서버 모음 |
+| [material-navigator-lib](https://github.com/InKyu0317/material-navigator-lib) | 유리 산화물 정적 데이터 Python 패키지 (mat_nav_lib) |
 
 ---
 
@@ -19,7 +26,7 @@
 | 스텝 | 설명 |
 |------|------|
 | 조성 목록 | 워크플로우 내 여러 유리 조성을 AG Grid로 관리 (추가/편집/삭제) |
-| 조성 설계 | 산화물 배합비(wt%), 유리 종류 선택, 목표 물성 설정 (Tg, CTE, 밀도 등) |
+| 조성 설계 | 산화물 드롭다운 선택(70종), 배합비(wt%), 유리 종류 선택, 목표 물성 설정 (Tg, CTE, 밀도 등) |
 | 칭량 (Weighing) | 조성별 배치 중량 및 원료 칭량 설정 |
 | 혼합 (Mixing) | 혼합 시간, 메모 설정 |
 | 성형 (Forming) | 형상(원형/바형) 및 치수 설정 |
@@ -62,6 +69,7 @@
 
 ## 기술 스택
 
+### Frontend
 | 카테고리 | 기술 |
 |----------|------|
 | Framework | Vue 3 (Composition API) + TypeScript 5.9 |
@@ -73,66 +81,137 @@
 | 패키지 관리 | pnpm v10 |
 | Node.js | v22+ |
 
+### Backend
+| 카테고리 | 기술 |
+|----------|------|
+| Framework | FastAPI 0.115+ |
+| 서버 | uvicorn |
+| 언어 | Python 3.10+ (conda `sila2_env`) |
+| 장비 통신 | SiLA 2 (sila2==0.14.0) gRPC → WebSocket 브릿지 |
+| 소재 데이터 | [mat_nav_lib](https://github.com/InKyu0317/material-navigator-lib) — 70종 산화물 정적 패키지 |
+
 ---
 
-## 프로젝트 구조
+## 전체 프로젝트 구조
 
 ```
-src/
-├── layouts/
-│   └── MainLayout.vue          # 메인 레이아웃 (사이드바 + 테마/폰트 툴바)
-├── pages/
-│   ├── MonitoringPage.vue       # SiLA 장비 모니터링
-│   ├── WorkflowPage.vue         # 워크플로우 목록/편집
-│   └── ExperimentPage.vue       # 실험 실행 시뮬레이션
-├── components/
-│   └── workflow/
-│       ├── types.ts             # 공용 타입 정의
-│       ├── gridTheme.ts         # 반응형 AG Grid 테마
-│       ├── WorkflowEditor.vue   # 탭 기반 워크플로우 편집기
-│       ├── WorkflowList.vue     # AG Grid 워크플로우 목록
-│       ├── DeviceSelector.vue   # SiLA 장비 선택 컴포넌트
-│       └── steps/               # 9개 스텝 컴포넌트
-│           ├── CompositionListStep.vue
-│           ├── CompositionStep.vue
-│           ├── WeighingStep.vue
-│           ├── MixingStep.vue
-│           ├── FormingStep.vue
-│           ├── FiringStep.vue
-│           ├── HeatTreatStep.vue
-│           ├── MachiningStep.vue
-│           └── AnalysisStep.vue
-├── composables/
-│   ├── useTheme.ts              # 테마/폰트/크기 관리
-│   ├── useWorkflows.ts          # 워크플로우 CRUD + localStorage
-│   ├── useSilaDevices.ts        # SiLA 장비 목록 관리
-│   └── useExperimentRunner.ts   # 실험 시뮬레이션 엔진
-└── router/
-    └── routes.ts                # 라우트 정의
+DEMO/
+├── start-all.bat               # 전체 서버 시작 (Backend + Balance SiLA + Frontend)
+├── stop-all.bat                # 전체 서버 중지
+│
+├── lab-pilot-demo/             # 본 레포지토리
+│   ├── frontend/               # Vue 3 + Quasar 프론트엔드
+│   │   └── src/
+│   │       ├── layouts/
+│   │       │   └── MainLayout.vue          # 사이드바 + 테마/폰트 툴바
+│   │       ├── pages/
+│   │       │   ├── MonitoringPage.vue       # SiLA 장비 모니터링
+│   │       │   ├── WorkflowPage.vue         # 워크플로우 목록/편집
+│   │       │   └── ExperimentPage.vue       # 실험 실행 시뮬레이션
+│   │       ├── components/
+│   │       │   └── workflow/
+│   │       │       ├── types.ts             # 공용 타입 정의
+│   │       │       ├── gridTheme.ts         # 반응형 AG Grid 테마
+│   │       │       ├── WorkflowEditor.vue   # 탭 기반 워크플로우 편집기
+│   │       │       ├── WorkflowList.vue     # AG Grid 워크플로우 목록
+│   │       │       ├── DeviceSelector.vue   # SiLA 장비 선택
+│   │       │       └── steps/              # 9개 스텝 컴포넌트
+│   │       │           ├── CompositionListStep.vue
+│   │       │           ├── CompositionStep.vue
+│   │       │           ├── WeighingStep.vue
+│   │       │           ├── MixingStep.vue
+│   │       │           ├── FormingStep.vue
+│   │       │           ├── FiringStep.vue
+│   │       │           ├── HeatTreatStep.vue
+│   │       │           ├── MachiningStep.vue
+│   │       │           └── AnalysisStep.vue
+│   │       └── composables/
+│   │           ├── useTheme.ts              # 테마/폰트/크기 관리
+│   │           ├── useWorkflows.ts          # 워크플로우 CRUD + localStorage
+│   │           ├── useSilaDevices.ts        # SiLA 장비 목록 관리
+│   │           ├── useMaterials.ts          # mat_nav_lib API 연동 (산화물 목록)
+│   │           └── useExperimentRunner.ts   # 실험 시뮬레이션 엔진
+│   └── backend/                # FastAPI 백엔드
+│       └── app/
+│           ├── main.py                     # FastAPI 진입점 + CORS
+│           └── api/
+│               ├── devices.py              # SiLA 장비 목록 API
+│               ├── materials.py            # 산화물 목록 API (/api/materials/oxides)
+│               └── ws.py                   # WebSocket SiLA 브릿지
+│
+├── ss_manager/                 # github.com/InKyu0317/sila-server-manager
+│   └── balance/
+│       ├── balance_server.py   # CB310 저울 SiLA 2 서버 (RS-232 :50051)
+│       └── generated/          # WeightMeasurement SiLA Feature 코드
+│
+└── mat_nav_lib/                # github.com/InKyu0317/material-navigator-lib
+    └── mat_nav_lib/
+        ├── __init__.py         # get_oxides, get_oxide_formulas export
+        └── oxides.py           # 70종 산화물 정적 데이터
 ```
+
+### 포트 구성
+
+| 서비스 | 포트 | 설명 |
+|--------|------|------|
+| Vue Frontend | :9002 | Quasar dev server |
+| FastAPI Backend | :8000 | REST API + WebSocket |
+| Balance SiLA | :50051 | CB310 저울 gRPC |
 
 ---
 
 ## 실행 방법
 
-### 사전 요구사항
-- Node.js v22+
-- pnpm v10+
+### 전체 서버 한 번에 시작 (권장)
 
-### 설치 및 실행
+`DEMO/` 루트의 배치 파일로 모든 서버를 시작/종료할 수 있습니다.
+
+```
+start-all.bat   # Backend + Balance SiLA + Frontend 동시 시작
+stop-all.bat    # 전체 서버 종료
+```
+
+### 개별 실행
+
+#### 사전 요구사항
+- Node.js v22+, pnpm v10+
+- Python 3.10+, conda 환경 `sila2_env`
+- [mat_nav_lib](https://github.com/InKyu0317/material-navigator-lib) 설치 (`pip install -e ./mat_nav_lib`)
+
+#### Frontend
 
 ```bash
+cd frontend
 pnpm install
 pnpm dev
 ```
 
-### 프로덕션 빌드
+#### Backend
 
 ```bash
+cd backend
+# mat_nav_lib 경로를 PYTHONPATH에 추가
+set PYTHONPATH=../../../mat_nav_lib   # Windows
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+#### Balance SiLA Server
+
+[sila-server-manager](https://github.com/InKyu0317/sila-server-manager) 레포 참조
+
+```bash
+cd ss_manager/balance
+python balance_server.py --com COM11 --port 50051
+```
+
+### 프로덕션 빌드 (Frontend)
+
+```bash
+cd frontend
 pnpm build
 ```
 
-빌드 결과물은 `dist/spa/` 에 생성됩니다.
+빌드 결과물은 `frontend/dist/spa/` 에 생성됩니다.
 
 ---
 
