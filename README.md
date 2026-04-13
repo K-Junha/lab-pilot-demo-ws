@@ -215,6 +215,64 @@ pnpm build
 
 ---
 
+## 시스템 아키텍처
+
+```mermaid
+flowchart TB
+    subgraph USER["👤 사용자 (Browser)"]
+        UI["Vue 3 + Quasar  localhost:9002"]
+    end
+
+    subgraph FRONTEND["🖥️ lab-pilot-demo / frontend"]
+        direction TB
+        WF["WorkflowPage"]
+        EXP["ExperimentPage"]
+        MON["MonitoringPage"]
+
+        subgraph COMPOSABLES["Composables"]
+            uW["useWorkflows\nlocalStorage CRUD"]
+            uM["useMaterials\n산화물 목록 fetch"]
+            uS["useSilaDevices\n장비 목록"]
+            uER["useExperimentRunner\n실험 시뮬레이션"]
+            uWs["useBalanceWs\nWebSocket 실시간 중량"]
+        end
+    end
+
+    subgraph BACKEND["⚙️ lab-pilot-demo / backend  :8000"]
+        direction LR
+        API_DEV["/api/devices"]
+        API_MAT["/api/materials/oxides"]
+        API_WS["/api/ws/balance  WebSocket"]
+    end
+
+    subgraph MATLIB["📦 material-navigator-lib  (mat_nav_lib)"]
+        OXIDES["OXIDE_LIST\n70종 산화물 정적 데이터\nformula · name_ko · molar_mass · category"]
+    end
+
+    subgraph SILA["🔌 sila-server-manager  :50051"]
+        BAL_SERVER["Balance SiLA Server\nCB310 gRPC 서버"]
+    end
+
+    subgraph HW["🔧 Hardware"]
+        CB310["CB310 저울\nRS-232 COM11  9600bps 7E1"]
+    end
+
+    USER <-->|HTTP / WS| FRONTEND
+    WF --> uW & uM & uS
+    EXP --> uER & uWs
+    MON --> uS
+
+    uM -->|"GET /api/materials/oxides"| API_MAT
+    uS -->|"GET /api/devices"| API_DEV
+    uWs <-->|WebSocket| API_WS
+
+    API_MAT -->|"get_oxides()"| OXIDES
+    API_WS <-->|gRPC Subscribe| BAL_SERVER
+    BAL_SERVER <-->|"serial read/write 50ms"| CB310
+```
+
+---
+
 ## 배포
 
 GitHub Actions를 통해 `main` 브랜치 push 시 자동으로 GitHub Pages에 배포됩니다.
