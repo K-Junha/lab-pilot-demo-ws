@@ -62,6 +62,24 @@
             </q-item>
           </q-list>
         </q-btn-dropdown>
+
+        <!-- User info + logout -->
+        <q-btn flat dense no-caps class="q-ml-sm">
+          <q-icon name="account_circle" class="q-mr-xs" />
+          {{ authStore.user?.username }}
+          <q-menu>
+            <q-list dense style="min-width: 160px">
+              <q-item-section class="q-pa-sm text-caption text-grey">
+                {{ authStore.user?.role === 'admin' ? '관리자' : '연구원' }}
+              </q-item-section>
+              <q-separator />
+              <q-item clickable v-close-popup @click="logout">
+                <q-item-section avatar><q-icon name="logout" /></q-item-section>
+                <q-item-section>로그아웃</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-btn>
       </q-toolbar>
     </q-header>
 
@@ -94,6 +112,34 @@
           </q-item-section>
           <q-item-section>실험 실행</q-item-section>
         </q-item>
+        <q-item
+          clickable v-ripple to="/logs"
+          active-class="side-menu-active"
+        >
+          <q-item-section avatar>
+            <q-icon name="list_alt" />
+          </q-item-section>
+          <q-item-section>실험 로그</q-item-section>
+        </q-item>
+        <q-item
+          clickable v-ripple to="/results"
+          active-class="side-menu-active"
+        >
+          <q-item-section avatar>
+            <q-icon name="analytics" />
+          </q-item-section>
+          <q-item-section>결과</q-item-section>
+        </q-item>
+        <q-item
+          v-if="authStore.isAdmin"
+          clickable v-ripple to="/admin"
+          active-class="side-menu-active"
+        >
+          <q-item-section avatar>
+            <q-icon name="admin_panel_settings" />
+          </q-item-section>
+          <q-item-section>관리자</q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 
@@ -107,6 +153,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useTheme } from 'src/composables/useTheme';
+import { useAuthStore } from 'src/stores/auth';
+import { useAuth } from 'src/composables/useAuth';
 
 const {
   themes,
@@ -118,6 +166,9 @@ const {
   currentTheme,
   currentFont,
 } = useTheme();
+
+const authStore = useAuthStore();
+const { logout } = useAuth();
 
 const leftDrawerOpen = ref(false);
 

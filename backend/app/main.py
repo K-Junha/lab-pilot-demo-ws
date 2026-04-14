@@ -1,44 +1,55 @@
 """LAB Pilot Backend — FastAPI 진입점"""
 from __future__ import annotations
 
+import asyncio
+import sys
 from contextlib import asynccontextmanager
+
+# Windows에서 asyncpg는 SelectorEventLoop 필요
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.devices import router as devices_router, _executor as devices_executor
+from app.config import settings
+from app.middleware.logging_middleware import LoggingMiddleware
+from app.api.auth import router as auth_router
+from app.api.workflows import router as workflows_router
+from app.api.logs import router as logs_router
+from app.api.results import router as results_router
+from app.api.admin import router as admin_router
+from app.api.devices import router as devices_router, _executor as devices_executor, start_watchdog, stop_watchdog
 from app.api.materials import router as materials_router
 from app.api.ws import router as ws_router, _ws_executor
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await start_watchdog()
     yield
-    # clean shutdown: 진행 중인 작업 완료 후 executor 종료
+    await stop_watchdog()
     devices_executor.shutdown(wait=False)
     _ws_executor.shutdown(wait=False)
 
 
 app = FastAPI(title="LAB Pilot Backend", version="0.1.0", lifespan=lifespan)
 
-# 개발 환경: 로컬 프론트엔드 origin만 허용
-# 프로덕션에서는 실제 도메인으로 교체할 것
-ALLOWED_ORIGINS = [
-    "http://localhost:9000",
-    "http://localhost:9001",
-    "http://localhost:9002",
-    "http://localhost:9003",
-]
-
+app.add_middleware(LoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
+app.include_router(auth_router, prefix="/api")
+app.include_router(workflows_router, prefix="/api")
+app.include_router(logs_router, prefix="/api")
+app.include_router(results_router, prefix="/api")
+app.include_router(admin_router, prefix="/api")
 app.include_router(devices_router, prefix="/api")
 app.include_router(materials_router, prefix="/api")
 app.include_router(ws_router, prefix="/api")

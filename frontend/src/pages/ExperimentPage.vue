@@ -17,16 +17,32 @@
         :disable="!!currentRun && currentRun.status === 'running'"
       />
       <q-btn
-        v-if="selectedWorkflow && !currentRun"
+        v-if="selectedWorkflow && selectedWorkflow.status === '진행중' && !currentRun"
         color="primary"
         icon="science"
         label="실험 생성"
         @click="onCreateRun"
       />
+      <q-chip
+        v-if="selectedWorkflow && selectedWorkflow.status === '계획중'"
+        color="orange"
+        text-color="white"
+        icon="lock"
+        label="계획중 — 워크플로우 페이지에서 실험을 시작하세요"
+      />
       <q-space />
-      <q-badge v-if="currentRun" :color="runStatusColor" class="text-body2 q-pa-sm">
-        {{ runStatusLabel }}
-      </q-badge>
+      <template v-if="currentRun">
+        <q-badge :color="runStatusColor" class="text-body2 q-pa-sm q-mr-sm">
+          {{ runStatusLabel }}
+        </q-badge>
+        <q-btn
+          v-if="allStepsCompleted && selectedWorkflow?.status === '진행중'"
+          color="positive"
+          icon="check_circle"
+          label="실험 완료"
+          @click="onCompleteExperiment"
+        />
+      </template>
     </div>
 
     <!-- No workflow selected -->
@@ -152,6 +168,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from 'src/stores/auth'
 import { useWorkflows } from 'src/composables/useWorkflows'
 import { useExperimentRunner } from 'src/composables/useExperimentRunner'
 import { useSilaDevices } from 'src/composables/useSilaDevices'
@@ -163,16 +180,25 @@ import AnalysisSummary from 'src/components/experiment/AnalysisSummary.vue'
 import StepRunner from 'src/components/experiment/StepRunner.vue'
 import StepConfigSummary from 'src/components/experiment/StepConfigSummary.vue'
 
+const API_BASE = 'http://localhost:8000/api'
+
 const $q = useQuasar()
 const router = useRouter()
-const { workflows } = useWorkflows()
+const authStore = useAuthStore()
+const { workflows, fetchAll } = useWorkflows()
 const { currentRun, activeStepUid, createRun, startStep, stopStep, cleanup } = useExperimentRunner()
 const { allDevices } = useSilaDevices()
 
 const selectedWorkflowId = ref<number | null>(currentRun.value?.workflowId ?? null)
 
+const allStepsCompleted = computed(() =>
+  !!currentRun.value && currentRun.value.steps.length > 0 &&
+  currentRun.value.steps.every((s) => s.status === 'completed')
+)
+
 // 페이지 진입 시 워크플로우 변경 감지
 onMounted(() => {
+  void fetchAll()
   if (!currentRun.value || !selectedWorkflow.value) return
   const runUids = currentRun.value.steps.map(s => s.uid).sort().join(',')
   const wfUids  = selectedWorkflow.value.steps.map(s => s.uid).sort().join(',')
@@ -251,6 +277,29 @@ function onCreateRun() {
 function onStartStep(uid: number) {
   const ws = selectedWorkflow.value?.steps.find(s => s.uid === uid)
   if (ws) startStep(uid, ws)
+}
+
+async function onCompleteExperiment() {
+  const wf = selectedWorkflow.value
+  if (!wf) return
+  $q.dialog({
+    title: '실험 완료',
+    message: '실험을 완료 처리하시겠습니까? 완료 후에는 수정할 수 없습니다.',
+    cancel: { flat: true, label: '취소' },
+    ok: { color: 'positive', label: '완료' },
+  }).onOk(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/workflows/${wf.id}/complete`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authStore.token ?? ''}` },
+      })
+      if (!res.ok) throw new Error()
+      void fetchAll()
+      $q.notify({ type: 'positive', icon: 'celebration', message: '실험이 완료되었습니다!' })
+    } catch {
+      $q.notify({ type: 'negative', message: '실험 완료 처리 실패' })
+    }
+  })
 }
 
 function onStopStep(uid: number) {
