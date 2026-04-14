@@ -1,0 +1,15 @@
+[project]
+name = "lab-pilot-backend"
+version = "0.1.0"
+description = "LAB Pilot Demo — FastAPI backend"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "sila2==0.14.0",
+    "websockets>=12.0",
+    "mat-nav-lib @ file:///${PROJECT_ROOT}/../../mat_nav_lib",
+]
+
+[project.scripts]
+lab-pilot-backend = "app.main:run"

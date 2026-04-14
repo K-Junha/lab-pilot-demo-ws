@@ -5,7 +5,7 @@ import asyncio
 import math
 from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 router = APIRouter(tags=["devices"])
 
@@ -80,16 +80,19 @@ async def device_status(device_id: str):
     """
     server = SILA_SERVERS.get(device_id)
     if not server:
-        return {"error": "device not found"}, 404
+        raise HTTPException(status_code=404, detail="device not found")
 
-    loop = asyncio.get_event_loop()
-    result = await asyncio.wait_for(
-        loop.run_in_executor(
-            _executor,
-            _check_balance_connection,
-            server["host"],
-            server["port"],
-        ),
-        timeout=5.0,
-    )
+    try:
+        loop = asyncio.get_event_loop()
+        result = await asyncio.wait_for(
+            loop.run_in_executor(
+                _executor,
+                _check_balance_connection,
+                server["host"],
+                server["port"],
+            ),
+            timeout=5.0,
+        )
+    except asyncio.TimeoutError:
+        result = {"connected": False, "detail": "Health check timed out"}
     return {"id": device_id, **result}
