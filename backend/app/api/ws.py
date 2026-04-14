@@ -71,7 +71,7 @@ async def balance_ws(websocket: WebSocket):
     except Exception as e:
         logger.error(f"[WS] Error: {e}")
         try:
-            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.send_json({"type": "error", "message": "Internal server error"})
         except Exception:
             pass
     finally:

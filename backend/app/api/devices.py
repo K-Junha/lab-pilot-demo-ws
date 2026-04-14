@@ -27,43 +27,28 @@ def _check_balance_connection(host: str, port: int) -> dict:
     """SiLA gRPC Weight 값을 실제로 구독해 저울 물리 연결 여부를 확인.
 
     - SiLA 서버 자체에 접속이 안 되면 connected=False
-    - 접속은 되지만 2초 내 Weight 값이 오지 않으면 connected=False (저울 미연결)
+    - 접속은 되지만 Weight 값이 오지 않으면 connected=False (저울 미연결)
     - Weight 값이 정상 수신되면 connected=True
     """
-    import queue
-    import threading
-
     try:
         from sila2.client import SilaClient
         client = SilaClient(host, port, insecure=True)
     except Exception:
         return {"connected": False, "detail": "SiLA server not reachable"}
 
-    result_q: queue.Queue = queue.Queue()
-
-    def _read_weight():
-        try:
-            subscription = client.WeightMeasurement.Weight.subscribe()
-            value = next(subscription)
-            result_q.put(("ok", value))
-        except Exception as e:
-            result_q.put(("error", str(e)))
-
-    t = threading.Thread(target=_read_weight, daemon=True)
-    t.start()
-
     try:
-        status, payload = result_q.get(timeout=2.0)
-    except queue.Empty:
+        subscription = client.WeightMeasurement.Weight.subscribe()
+        value = next(subscription)
+    except StopIteration:
+        return {"connected": False, "detail": "No weight data received"}
+    except Exception as e:
+        return {"connected": False, "detail": "Weight read failed"}
+    finally:
         del client
-        return {"connected": False, "detail": "No weight data within timeout (balance not connected)"}
 
-    del client
-    if status == "ok":
-        if math.isnan(payload):
-            return {"connected": False, "detail": "Balance not physically connected (NaN)"}
-        return {"connected": True, "weight": round(payload, 4)}
-    return {"connected": False, "detail": f"Weight read failed: {payload}"}
+    if math.isnan(value):
+        return {"connected": False, "detail": "Balance not physically connected (NaN)"}
+    return {"connected": True, "weight": round(value, 4)}
 
 
 @router.get("/devices")
