@@ -19,6 +19,7 @@
 - SiLA2 기반 실험 장비 실시간 상태 모니터링
 - 장비 관리자(Manager) → 서버(Server) 계층 구조 표시
 - 장비별 온라인/오프라인 상태, 온도, 압력, 진행률 확인
+- **정확한 장비 연결 감지**: SiLA Weight 구독으로 물리 장치(저울) 실제 연결 여부 판별 (NaN = 미연결)
 
 ### 2. 워크플로우 (Workflow)
 **다중 조성(Multi-composition) 지원 탭 기반 워크플로우 편집기**
@@ -135,7 +136,7 @@ DEMO/
 │       └── app/
 │           ├── main.py                     # FastAPI 진입점 + CORS
 │           └── api/
-│               ├── devices.py              # SiLA 장비 목록 API
+│               ├── devices.py              # SiLA 장비 상태 API (gRPC Weight 구독으로 물리 연결 검증)
 │               ├── materials.py            # 산화물 목록 API (/api/materials/oxides)
 │               └── ws.py                   # WebSocket SiLA 브릿지
 │
