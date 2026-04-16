@@ -75,14 +75,12 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useSilaDevices } from 'src/composables/useSilaDevices'
 
-const { managers, fetchBalanceStatus } = useSilaDevices()
+const { managers, fetchManagers } = useSilaDevices()
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
-onMounted(async () => {
-  try { await fetchBalanceStatus() } catch { /* ignore */ }
-  pollTimer = setInterval(async () => {
-    try { await fetchBalanceStatus() } catch { /* ignore */ }
-  }, 5000)
+onMounted(() => {
+  void fetchManagers()
+  pollTimer = setInterval(() => { void fetchManagers() }, 5000)
 })
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)

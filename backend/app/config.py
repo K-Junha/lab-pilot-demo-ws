@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     UPLOAD_PATH: str = "./uploads"
     LOG_PATH: str = "./logs"
 
+    # ss_manager 인증 키
+    MANAGER_API_KEY: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

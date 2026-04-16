@@ -1,28 +1,21 @@
-"""WebSocket 엔드포인트 — SiLA 저울 실시간 무게 스트리밍"""
+"""WebSocket 엔드포인트 — ss_manager 캐시 기반 저울 실시간 스트리밍"""
 from __future__ import annotations
 
 import asyncio
-import logging
-import math
-from concurrent.futures import ThreadPoolExecutor
+import json
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
 
 from app.config import settings
+from app.core.logger import get_logger
 
 router = APIRouter(tags=["ws"])
-logger = logging.getLogger(__name__)
+logger = get_logger("system")
 
-# SiLA 서버 기본 설정
-BALANCE_HOST = "127.0.0.1"
-BALANCE_PORT = 50051
-
-# 전용 executor: 스레드 누수 방지
-_ws_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="sila-ws")
-
-WEIGHT_READ_TIMEOUT = 3.0  # 첫 답 타임아웃 (sec)
-AUTH_TIMEOUT = 5.0          # JWT 첫 메시지 대기 타임아웃 (sec)
+AUTH_TIMEOUT = 5.0       # JWT 첫 메시지 대기 타임아웃 (sec)
+POLL_INTERVAL = 0.5      # 캐시 폴링 간격 (sec)
+BALANCE_DEVICE_ID = "balance"
 
 
 async def _authenticate_ws(websocket: WebSocket) -> bool:
@@ -41,7 +34,6 @@ async def _authenticate_ws(websocket: WebSocket) -> bool:
         return False
 
     try:
-        import json
         msg = json.loads(raw)
         if msg.get("type") != "auth" or not msg.get("token"):
             raise ValueError("missing token")
@@ -54,66 +46,56 @@ async def _authenticate_ws(websocket: WebSocket) -> bool:
     return True
 
 
+def _find_balance_value() -> float | None:
+    """인메모리 캐시에서 balance 장치의 최신 무게 값을 찾는다.
+
+    온라인인 첫 번째 ss_manager의 balance 장치 latest_data["Weight"]를 반환.
+    없으면 None 반환.
+    """
+    from app.api.ws_manager_client import get_cache
+
+    for cached in get_cache().values():
+        if not cached.online:
+            continue
+        dev = cached.devices.get(BALANCE_DEVICE_ID)
+        if dev and dev.connected:
+            weight = dev.latest_data.get("Weight")
+            if weight is not None:
+                return float(weight)
+    return None
+
+
 @router.websocket("/ws/balance")
 async def balance_ws(websocket: WebSocket):
-    """SiLA 저울 서버에 연결하여 무게 데이터를 WebSocket으로 스트리밍.
+    """ss_manager 캐시에서 무게 데이터를 읽어 WebSocket으로 스트리밍.
 
-    클라이언트가 WebSocket 연결 → JWT 첫 메시지 인증 → SiLA gRPC subscribe → 무게 값 전달.
+    클라이언트가 WebSocket 연결 → JWT 첫 메시지 인증 → 캐시 폴링 → 무게 값 전달.
+    메시지 포맷: {"type":"weight","value":X} | {"type":"disconnected"}
     """
     await websocket.accept()
-    logger.info("[WS] Balance WebSocket client connected")
+    logger.info("[WS] Balance WebSocket 클라이언트 연결")
 
     if not await _authenticate_ws(websocket):
         logger.warning("[WS] JWT 인증 실패 — 연결 종료")
         return
 
-    client = None
     try:
-        from sila2.client import SilaClient
-
-        client = SilaClient(BALANCE_HOST, BALANCE_PORT, insecure=True)
-        weight_property = client.WeightMeasurement.Weight
-        subscription = weight_property.subscribe()
-
         while True:
-            try:
-                # 주어진 timeout 내에 값이 오지 않으면 클라이언트에 오류 전송 후 진행
-                value = await asyncio.wait_for(
-                    asyncio.get_event_loop().run_in_executor(
-                        _ws_executor, lambda: next(subscription)
-                    ),
-                    timeout=WEIGHT_READ_TIMEOUT,
-                )
-            except asyncio.TimeoutError:
-                await websocket.send_json({"type": "error", "message": "Balance read timeout"})
-                continue
+            await asyncio.sleep(POLL_INTERVAL)
 
-            # NaN = 저울 미연결 신호
-            if math.isnan(value):
+            value = _find_balance_value()
+            if value is None:
                 await websocket.send_json({"type": "disconnected"})
             else:
-                await websocket.send_json({
-                    "type": "weight",
-                    "value": round(value, 4),
-                })
+                await websocket.send_json({"type": "weight", "value": round(value, 4)})
+
     except WebSocketDisconnect:
-        logger.info("[WS] Balance WebSocket client disconnected")
-    except StopIteration:
-        logger.warning("[WS] SiLA subscription ended")
-        try:
-            await websocket.send_json({"type": "error", "message": "SiLA subscription ended"})
-        except Exception:
-            pass
+        logger.info("[WS] Balance WebSocket 클라이언트 연결 해제")
     except Exception as e:
-        logger.error(f"[WS] Error: {e}")
+        logger.error("[WS] 오류: %s", e)
         try:
             await websocket.send_json({"type": "error", "message": "Internal server error"})
         except Exception:
             pass
     finally:
-        if client:
-            try:
-                del client
-            except Exception:
-                pass
-        logger.info("[WS] Balance WebSocket session closed")
+        logger.info("[WS] Balance WebSocket 세션 종료")

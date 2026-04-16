@@ -75,3 +75,14 @@ class ExperimentResult(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
     workflow: Mapped["Workflow"] = relationship("Workflow", back_populates="result")
+
+
+class SsManager(Base):
+    __tablename__ = "ss_managers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    host: Mapped[str] = mapped_column(String(255), nullable=False)
+    ws_port: Mapped[int] = mapped_column(Integer, nullable=False, default=8765)
+    api_key: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

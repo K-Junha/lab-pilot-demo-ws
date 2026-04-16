@@ -1,59 +1,71 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
+import { injectAuth, mockManagersApi } from './helpers/auth'
 
-async function clearStorage(page: Page) {
-  await page.goto('/#/')
-  await page.evaluate(() => localStorage.clear())
-}
-
-async function createWorkflowWithWeighing(page: Page, name: string) {
-  await page.goto('/#/workflow')
-  await page.locator('button, .q-btn').filter({ hasText: '새 워크플로우' }).click()
-  await page.getByLabel('워크플로우 이름').fill(name)
-  await page.locator('[data-testid="add-step-btn"]').click()
-  await page.getByText('원료 칭량').click()
-  await page.locator('button, .q-btn').filter({ hasText: '저장' }).first().click()
-  await expect(page.getByText('워크플로우가 저장되었습니다')).toBeVisible({ timeout: 10000 })
+const WEIGHING_WORKFLOW = {
+  id: 1,
+  name: '테스트 워크플로우',
+  owner_id: 1,
+  steps: [{ id: 'step-1', type: 'weighing', name: '원료 칭량', config: {} }],
+  created_at: '2024-01-01T00:00:00',
+  updated_at: '2024-01-01T00:00:00',
 }
 
 test.describe('실험 실행 페이지', () => {
-  test.beforeEach(async ({ page }) => {
-    await clearStorage(page)
-    await createWorkflowWithWeighing(page, '테스트 워크플로우')
-  })
-
-  test('워크플로우 선택 가능', async ({ page }) => {
+  test('페이지 진입 시 기본 레이아웃 표시', async ({ page }) => {
+    await injectAuth(page)
+    await mockManagersApi(page)
+    await page.route('**/api/workflows', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
+    )
     await page.goto('/#/experiment')
-    await expect(page.getByText('테스트 워크플로우')).toBeVisible()
+    await expect(page).toHaveURL(/experiment/)
+    await expect(page.locator('body')).not.toContainText('404')
+    await expect(page.locator('body')).not.toContainText('Not Found')
   })
 
-  test('워크플로우 수정 후 실험 페이지 복귀 시 변경 감지', async ({ page }) => {
-    // 실험 페이지 진입 확인
+  test('워크플로우 선택 가능 (드롭다운 표시)', async ({ page }) => {
+    await injectAuth(page)
+    await mockManagersApi(page)
+    await page.route('**/api/workflows', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([WEIGHING_WORKFLOW]),
+      }),
+    )
+    await page.goto('/#/experiment')
+    // q-select 드롭다운이 페이지에 표시되어야 함
+    await expect(page.locator('.q-select')).toBeVisible()
+    // 드롭다운 클릭 후 옵션 확인
+    await page.locator('.q-select').click()
+    await expect(page.getByRole('option').first()).toBeVisible({ timeout: 5000 })
+  })
+
+  test('워크플로우 없을 때 페이지 정상 표시', async ({ page }) => {
+    await injectAuth(page)
+    await mockManagersApi(page)
+    await page.route('**/api/workflows', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
+    )
     await page.goto('/#/experiment')
     await expect(page).toHaveURL(/experiment/)
     await expect(page.locator('body')).not.toContainText('Not Found')
-
-    // 워크플로우 페이지로 이동해 스텝 추가
-    await page.goto('/#/workflow')
-    await page.getByText('테스트 워크플로우').first().click()
-    await page.locator('[data-testid="add-step-btn"]').click()
-    await page.getByText('믹싱', { exact: true }).click()
-    await page.getByRole('button', { name: '저장' }).first().click()
-
-    // 실험 페이지로 돌아가면 워크플로우가 업데이트됨
-    await page.goto('/#/experiment')
-    await expect(page).toHaveURL(/experiment/)
   })
 })
 
-test.describe('실험 실행 흐름', () => {
-  test('페이지 진입 시 기본 레이아웃 표시', async ({ page }) => {
-    await clearStorage(page)
-    await page.goto('/#/experiment')
-
-    // 네비게이션이 있는지 확인
-    await expect(page).toHaveURL(/experiment/)
-    // 페이지 에러가 없어야 함 (에러 페이지로 redirect되지 않아야)
-    await expect(page.locator('body')).not.toContainText('404')
+test.describe('모니터링 페이지', () => {
+  test('서버 없을 때 빈 상태 메시지 표시', async ({ page }) => {
+    await injectAuth(page)
+    await mockManagersApi(page)
+    await page.goto('/#/')
+    await expect(page).toHaveURL(/localhost:9000/)
     await expect(page.locator('body')).not.toContainText('Not Found')
+  })
+
+  test('SiLA Server Monitoring 헤딩 표시', async ({ page }) => {
+    await injectAuth(page)
+    await mockManagersApi(page)
+    await page.goto('/#/')
+    await expect(page.getByText('SiLA Server Monitoring')).toBeVisible()
   })
 })

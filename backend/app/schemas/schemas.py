@@ -126,3 +126,23 @@ class ExperimentResultResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ── SsManager ─────────────────────────────────────────────────────────────────
+
+class SsManagerCreate(BaseModel):
+    name: str
+    host: str
+    ws_port: int = 8765
+    api_key: str = ""
+
+
+class SsManagerResponse(BaseModel):
+    id: int
+    name: str
+    host: str
+    ws_port: int
+    api_key: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

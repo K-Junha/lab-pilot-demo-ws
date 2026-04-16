@@ -5,9 +5,13 @@ import asyncio
 import math
 from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logger import get_logger
+from app.dependencies import get_current_user, get_db
+from app.models.models import SsManager, User
 
 router = APIRouter(tags=["devices"])
 logger = get_logger("device")
@@ -129,3 +133,64 @@ async def device_status(device_id: str):
         result = {"connected": False, "detail": "Health check timed out"}
     _device_connected[device_id] = result.get("connected", False)
     return {"id": device_id, **result}
+
+
+# ── ss_manager REST API ───────────────────────────────────────────────────────
+
+@router.get("/managers")
+async def list_managers(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """등록된 ss_manager 목록 + 인메모리 캐시 상태 병합 반환."""
+    from app.api.ws_manager_client import get_cache
+
+    result = await db.execute(select(SsManager).order_by(SsManager.created_at))
+    managers: list[SsManager] = list(result.scalars().all())
+    cache = get_cache()
+
+    response = []
+    for m in managers:
+        cached = cache.get(m.id)
+        devices_list = []
+        if cached:
+            for dev in cached.devices.values():
+                devices_list.append({
+                    "id": dev.id,
+                    "name": dev.name,
+                    "icon": dev.icon,
+                    "connected": dev.connected,
+                    "latest_value": dev.latest_data,
+                })
+
+        response.append({
+            "manager_id": m.id,
+            "name": m.name,
+            "host": m.host,
+            "ws_port": m.ws_port,
+            "online": cached.online if cached else False,
+            "last_seen": cached.last_seen.isoformat() if (cached and cached.last_seen) else None,
+            "devices": devices_list,
+        })
+
+    return response
+
+
+@router.post("/managers/{manager_id}/commands", status_code=status.HTTP_200_OK)
+async def send_manager_command(
+    manager_id: int,
+    device_id: str = Body(...),
+    command: str = Body(...),
+    _: User = Depends(get_current_user),
+):
+    """등록된 ss_manager로 장치 명령을 전달한다."""
+    from app.api.ws_manager_client import send_command
+
+    ok = await send_command(manager_id, device_id, command)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ss_manager에 연결할 수 없거나 명령 전송에 실패했습니다",
+        )
+    logger.info("[device] 명령 전달: manager_id=%d device=%s command=%s", manager_id, device_id, command)
+    return {"ok": True}

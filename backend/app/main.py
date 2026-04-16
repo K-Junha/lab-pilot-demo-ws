@@ -22,16 +22,18 @@ from app.api.results import router as results_router
 from app.api.admin import router as admin_router
 from app.api.devices import router as devices_router, _executor as devices_executor, start_watchdog, stop_watchdog
 from app.api.materials import router as materials_router
-from app.api.ws import router as ws_router, _ws_executor
+from app.api.ws import router as ws_router
+from app.api.ws_manager_client import start_all as start_manager_clients, stop_all as stop_manager_clients
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await start_watchdog()
+    await start_manager_clients()
     yield
+    await stop_manager_clients()
     await stop_watchdog()
     devices_executor.shutdown(wait=False)
-    _ws_executor.shutdown(wait=False)
 
 
 app = FastAPI(title="LAB Pilot Backend", version="0.1.0", lifespan=lifespan)
