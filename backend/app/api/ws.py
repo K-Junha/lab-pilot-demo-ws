@@ -15,7 +15,6 @@ logger = get_logger("system")
 
 AUTH_TIMEOUT = 5.0       # JWT 첫 메시지 대기 타임아웃 (sec)
 POLL_INTERVAL = 0.5      # 캐시 폴링 간격 (sec)
-BALANCE_DEVICE_ID = "balance"
 
 
 async def _authenticate_ws(websocket: WebSocket) -> bool:
@@ -47,9 +46,10 @@ async def _authenticate_ws(websocket: WebSocket) -> bool:
 
 
 def _find_balance_value() -> float | None:
-    """인메모리 캐시에서 balance 장치의 최신 무게 값을 찾는다.
+    """인메모리 캐시에서 Weight 데이터를 보유한 장치를 탐색해 반환.
 
-    온라인인 첫 번째 ss_manager의 balance 장치 latest_data["Weight"]를 반환.
+    device_id에 무관하게 online ss_manager의 연결된 장치 중
+    latest_data["Weight"] 값이 있는 첫 번째 항목을 반환.
     없으면 None 반환.
     """
     from app.api.ws_manager_client import get_cache
@@ -57,11 +57,11 @@ def _find_balance_value() -> float | None:
     for cached in get_cache().values():
         if not cached.online:
             continue
-        dev = cached.devices.get(BALANCE_DEVICE_ID)
-        if dev and dev.connected:
-            weight = dev.latest_data.get("Weight")
-            if weight is not None:
-                return float(weight)
+        for dev in cached.devices.values():
+            if dev.connected:
+                weight = dev.latest_data.get("Weight")
+                if weight is not None:
+                    return float(weight)
     return None
 
 

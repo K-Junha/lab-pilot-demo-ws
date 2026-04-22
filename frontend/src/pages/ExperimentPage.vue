@@ -1,166 +1,201 @@
 <template>
-  <q-page padding>
-    <!-- Header: workflow selector -->
-    <div class="row items-center q-gutter-md q-mb-md">
-      <div class="text-h5">실험 실행</div>
-      <q-select
-        outlined
-        dense
-        v-model="selectedWorkflowId"
-        :options="workflowOptions"
-        option-value="value"
-        option-label="label"
-        emit-value
-        map-options
-        label="워크플로우 선택"
-        style="min-width: 280px;"
-        :disable="!!currentRun && currentRun.status === 'running'"
-      />
-      <q-btn
-        v-if="selectedWorkflow && selectedWorkflow.status === '진행중' && !currentRun"
-        color="primary"
-        icon="science"
-        label="실험 생성"
-        @click="onCreateRun"
-      />
-      <q-chip
-        v-if="selectedWorkflow && selectedWorkflow.status === '계획중'"
-        color="orange"
-        text-color="white"
-        icon="lock"
-        label="계획중 — 워크플로우 페이지에서 실험을 시작하세요"
-      />
-      <q-space />
-      <template v-if="currentRun">
-        <q-badge :color="runStatusColor" class="text-body2 q-pa-sm q-mr-sm">
-          {{ runStatusLabel }}
-        </q-badge>
-        <q-btn
-          v-if="allStepsCompleted && selectedWorkflow?.status === '진행중'"
-          color="positive"
-          icon="check_circle"
-          label="실험 완료"
-          @click="onCompleteExperiment"
+  <q-page class="lp-page">
+    <!-- Top bar -->
+    <div class="lp-exp-topbar">
+      <div class="lp-exp-topbar__left">
+        <q-select
+          outlined dense
+          v-model="selectedWorkflowId"
+          :options="workflowOptions"
+          option-value="value"
+          option-label="label"
+          emit-value map-options
+          label="워크플로우 선택"
+          style="min-width: 260px;"
+          :disable="!!currentRun && currentRun.status === 'running'"
+          class="lp-select"
         />
-      </template>
+        <span v-if="currentRun" class="lp-status-chip" :class="runStatusChipClass">
+          <span v-if="currentRun.status === 'running'" class="lp-pulse-dot" />
+          {{ runStatusLabel }}
+        </span>
+        <q-btn
+          v-if="selectedWorkflow && selectedWorkflow.status === '진행중' && !currentRun"
+          unelevated no-caps icon="science" label="실험 생성"
+          class="lp-btn-primary"
+          @click="onCreateRun"
+        />
+        <div
+          v-if="selectedWorkflow && selectedWorkflow.status === '계획중'"
+          class="lp-exp-topbar__hint"
+        >
+          <q-icon name="lock" size="13px" style="color: var(--orange);" />
+          계획중 — 워크플로우 페이지에서 실험을 시작하세요
+        </div>
+      </div>
+      <q-btn
+        v-if="currentRun && allStepsCompleted && selectedWorkflow?.status === '진행중'"
+        unelevated no-caps icon="check_circle" label="실험 완료"
+        class="lp-btn-success"
+        @click="onCompleteExperiment"
+      />
     </div>
 
-    <!-- No workflow selected -->
-    <div v-if="!currentRun && workflows.length === 0" class="text-center text-grey q-mt-xl">
-      <q-icon name="account_tree" size="64px" class="q-mb-md" color="grey-5" />
-      <div class="text-h6">먼저 워크플로우를 생성하세요</div>
-      <q-btn flat color="primary" label="워크플로우 페이지로 이동" icon="arrow_forward" class="q-mt-md" @click="router.push('/workflow')" />
+    <!-- Empty states -->
+    <div v-if="!currentRun && workflows.length === 0" class="lp-empty">
+      <q-icon name="account_tree" size="48px" style="color: var(--t4);" />
+      <div class="lp-empty__title">먼저 워크플로우를 생성하세요</div>
+      <q-btn flat no-caps label="워크플로우 페이지로 이동" icon="arrow_forward" style="color: var(--accent);" @click="router.push('/workflow')" />
     </div>
-    <div v-else-if="!currentRun" class="text-center text-grey q-mt-xl">
-      <q-icon name="science" size="64px" class="q-mb-md" color="grey-5" />
-      <div class="text-h6">워크플로우를 선택하고 실험을 생성하세요</div>
+    <div v-else-if="!currentRun" class="lp-empty">
+      <q-icon name="science" size="48px" style="color: var(--t4);" />
+      <div class="lp-empty__title">워크플로우를 선택하고 실험을 생성하세요</div>
     </div>
 
-    <!-- Experiment runner layout -->
-    <div v-else class="row q-gutter-md" style="min-height: 500px;">
-      <!-- Left: Step timeline -->
-      <div class="col-3">
-        <q-list bordered separator class="rounded-borders">
-          <q-item
-            v-for="(exec, i) in currentRun.steps"
-            :key="exec.uid"
-            clickable
-            :active="activeStepUid === exec.uid"
-            :active-class="$q.dark.isActive ? 'bg-blue-10' : 'bg-blue-1'"
-            @click="activeStepUid = exec.uid"
-          >
-            <q-item-section avatar>
-              <q-icon
-                :name="statusIcon(exec.status)"
-                :color="statusIconColor(exec.status)"
-              />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>
-                {{ i + 1 }}. {{ stepLabel(exec.type) }}
-              </q-item-label>
-              <q-item-label caption>
-                <q-badge
-                  :color="statusBadgeColor(exec.status)"
-                  :label="statusLabel(exec.status)"
-                  dense
-                />
-                <span v-if="exec.elapsed > 0" class="q-ml-sm text-grey">
-                  {{ formatElapsed(exec.elapsed) }}
-                </span>
-              </q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
+    <template v-else>
+      <!-- Step timeline track -->
+      <div class="lp-card lp-timeline-card">
+        <div class="lp-timeline">
+          <template v-for="(exec, i) in currentRun.steps" :key="exec.uid">
+            <!-- Step circle -->
+            <div class="lp-timeline__step" @click="activeStepUid = exec.uid">
+              <div
+                class="lp-timeline__circle"
+                :class="{
+                  'lp-timeline__circle--done':    exec.status === 'completed',
+                  'lp-timeline__circle--running': exec.status === 'running',
+                  'lp-timeline__circle--active':  activeStepUid === exec.uid,
+                }"
+              >
+                <q-icon v-if="exec.status === 'completed'" name="check" size="13px" style="color: white;" />
+                <span v-else class="lp-timeline__num">{{ i + 1 }}</span>
+              </div>
+              <div class="lp-timeline__label" :class="{
+                'lp-timeline__label--done':    exec.status === 'completed',
+                'lp-timeline__label--running': exec.status === 'running',
+              }">{{ stepLabel(exec.type) }}</div>
+              <div v-if="exec.elapsed > 0" class="lp-timeline__elapsed lp-mono">{{ formatElapsed(exec.elapsed) }}</div>
+            </div>
+            <!-- Connector -->
+            <div v-if="i < currentRun.steps.length - 1" class="lp-timeline__connector"
+              :class="{ 'lp-timeline__connector--done': i < currentRun.steps.findIndex(s => s.status !== 'completed') }"
+            />
+          </template>
+        </div>
       </div>
 
-      <!-- Right: Step detail -->
-      <div class="col">
-        <q-card flat bordered class="q-pa-md">
-          <div v-if="!activeExec" class="text-grey text-center q-pa-lg">
-            스텝을 선택하세요
+      <!-- Main area -->
+      <div class="lp-exp-main">
+        <!-- Step list panel -->
+        <div class="lp-card lp-step-list">
+          <div class="lp-step-list__header lp-mono">전체 스텝</div>
+          <div
+            v-for="(exec, i) in currentRun.steps"
+            :key="exec.uid"
+            class="lp-step-item"
+            :class="{ 'lp-step-item--active': activeStepUid === exec.uid }"
+            @click="activeStepUid = exec.uid"
+          >
+            <div
+              class="lp-step-item__circle"
+              :class="{
+                'lp-step-item__circle--done':    exec.status === 'completed',
+                'lp-step-item__circle--running': exec.status === 'running',
+              }"
+            >
+              <q-icon v-if="exec.status === 'completed'" name="check" size="10px" style="color: white;" />
+              <span v-else class="lp-mono" style="font-size: 9px; font-weight: 700;">{{ i + 1 }}</span>
+            </div>
+            <div class="lp-step-item__label" :class="{ 'lp-step-item__label--active': activeStepUid === exec.uid }">
+              {{ stepLabel(exec.type) }}
+            </div>
+            <span v-if="exec.status === 'running'" class="lp-pulse-dot" style="background: var(--blue);" />
+          </div>
+        </div>
+
+        <!-- Step detail -->
+        <div class="lp-card lp-step-detail">
+          <div v-if="!activeExec" class="lp-empty" style="padding: 40px 0;">
+            <div style="color: var(--t3); font-size: 13px;">스텝을 선택하세요</div>
           </div>
 
-          <!-- 칭량 스텝 — 실시간 저울 연동 칭량 실행 -->
-          <template v-else-if="activeExec.type === 'weighing' && activeWorkflowStep">
-            <div class="text-h6 q-mb-md">
-              <q-icon name="scale" color="blue" class="q-mr-sm" />
-              원료 칭량
-            </div>
-            <WeighingRunner
-              :execution="activeExec"
-              :step-data="activeWorkflowStep.data"
-              :compositions="selectedWorkflow!.compositions"
-              :can-start="canStartActiveStep"
-              @start="onStartStep(activeExec.uid)"
-              @stop="onStopStep(activeExec.uid)"
-            />
-          </template>
-
-          <!-- Analysis step — special handling with PASS/FAIL -->
-          <template v-else-if="activeExec.type === 'analysis' && activeWorkflowStep">
-            <div class="text-h6 q-mb-md">
-              <q-icon name="science" color="green" class="q-mr-sm" />
-              측정/분석
-            </div>
-            <AnalysisSummary
-              :execution="activeExec"
-              :step-data="activeWorkflowStep.data"
-              :compositions="selectedWorkflow!.compositions"
-              @start="onStartStep(activeExec.uid)"
-              @stop="onStopStep(activeExec.uid)"
-            />
-          </template>
-
-          <!-- All other runnable steps -->
-          <template v-else-if="activeWorkflowStep">
-            <div class="text-h6 q-mb-md">
-              <q-icon
-                :name="stepDefs[activeExec.type].icon"
-                :color="stepDefs[activeExec.type].color"
-                class="q-mr-sm"
-              />
-              {{ stepDefs[activeExec.type].label }}
-              <span v-if="deviceName" class="text-body2 text-grey q-ml-sm">
-                장비: {{ deviceName }}
+          <template v-else>
+            <!-- Step header -->
+            <div class="lp-step-detail__head">
+              <div class="lp-step-detail__icon"
+                :class="{
+                  'lp-step-detail__icon--done':    activeExec.status === 'completed',
+                  'lp-step-detail__icon--running': activeExec.status === 'running',
+                }"
+              >
+                <q-icon
+                  :name="stepDefs[activeExec.type].icon"
+                  size="18px"
+                  :style="{ color: activeExec.status === 'completed' ? 'var(--green)' : activeExec.status === 'running' ? 'var(--blue)' : 'var(--t3)' }"
+                />
+              </div>
+              <div class="lp-step-detail__meta">
+                <div class="lp-step-detail__title">Step {{ (currentRun?.steps.findIndex(s => activeExec && s.uid === activeExec.uid) ?? 0) + 1 }}. {{ stepLabel(activeExec.type) }}</div>
+                <div v-if="deviceName" class="lp-step-detail__device lp-mono">장비: {{ deviceName }}</div>
+              </div>
+              <span class="lp-status-chip" :class="stepStatusChipClass(activeExec.status)">
+                <span v-if="activeExec.status === 'running'" class="lp-pulse-dot" />
+                {{ statusLabel(activeExec.status) }}
               </span>
             </div>
 
-            <!-- Step config summary (read-only) -->
-            <div class="q-mb-md">
-              <StepConfigSummary :step="activeWorkflowStep" />
-            </div>
+            <!-- Sub-components (unchanged) -->
+            <div class="lp-step-detail__content">
+              <template v-if="activeExec.type === 'weighing' && activeWorkflowStep">
+                <div class="lp-step-detail__subhead">
+                  <q-icon name="scale" size="16px" style="color: var(--blue);" />
+                  <span>원료 칭량</span>
+                </div>
+                <WeighingRunner
+                  :execution="activeExec"
+                  :step-data="activeWorkflowStep.data"
+                  :compositions="selectedWorkflow!.compositions"
+                  :can-start="canStartActiveStep"
+                  @start="onStartStep(activeExec.uid)"
+                  @stop="onStopStep(activeExec.uid)"
+                />
+              </template>
 
-            <StepRunner
-              :execution="activeExec"
-              :can-start="canStartActiveStep"
-              @start="onStartStep(activeExec.uid)"
-              @stop="onStopStep(activeExec.uid)"
-            />
+              <template v-else-if="activeExec.type === 'analysis' && activeWorkflowStep">
+                <div class="lp-step-detail__subhead">
+                  <q-icon name="science" size="16px" style="color: var(--green);" />
+                  <span>측정/분석</span>
+                </div>
+                <AnalysisSummary
+                  :execution="activeExec"
+                  :step-data="activeWorkflowStep.data"
+                  :compositions="selectedWorkflow!.compositions"
+                  @start="onStartStep(activeExec.uid)"
+                  @stop="onStopStep(activeExec.uid)"
+                />
+              </template>
+
+              <template v-else-if="activeWorkflowStep">
+                <div class="lp-step-detail__subhead">
+                  <q-icon :name="stepDefs[activeExec.type].icon" size="16px" :style="{ color: `var(--${stepDefs[activeExec.type].color})` }" />
+                  <span>{{ stepDefs[activeExec.type].label }}</span>
+                  <span v-if="deviceName" style="font-size: 11px; color: var(--t3); margin-left: 8px;">장비: {{ deviceName }}</span>
+                </div>
+                <div style="margin-bottom: 12px;">
+                  <StepConfigSummary :step="activeWorkflowStep" />
+                </div>
+                <StepRunner
+                  :execution="activeExec"
+                  :can-start="canStartActiveStep"
+                  @start="onStartStep(activeExec.uid)"
+                  @stop="onStopStep(activeExec.uid)"
+                />
+              </template>
+            </div>
           </template>
-        </q-card>
+        </div>
       </div>
-    </div>
+    </template>
   </q-page>
 </template>
 
@@ -196,7 +231,6 @@ const allStepsCompleted = computed(() =>
   currentRun.value.steps.every((s) => s.status === 'completed')
 )
 
-// 페이지 진입 시 워크플로우 변경 감지
 onMounted(() => {
   void fetchAll()
   if (!currentRun.value || !selectedWorkflow.value) return
@@ -223,50 +257,54 @@ const selectedWorkflow = computed(() =>
   workflows.value.find(w => w.id === selectedWorkflowId.value) ?? null
 )
 
-// Active execution step
 const activeExec = computed(() =>
   currentRun.value?.steps.find(s => s.uid === activeStepUid.value) ?? null
 )
 
-// Matching workflow step for data access
 const activeWorkflowStep = computed(() =>
   selectedWorkflow.value?.steps.find(s => s.uid === activeStepUid.value) ?? null
 )
 
-// Device name for active step
 const deviceName = computed(() => {
   const did = activeWorkflowStep.value?.data?.deviceId
   if (!did) return null
   return allDevices.value.find(d => d.serverId === did)?.device ?? null
 })
 
-// 이전 스텝 완료 여부 (순서 강제)
 const canStartActiveStep = computed(() => {
   if (!currentRun.value || !activeExec.value) return false
   const idx = currentRun.value.steps.findIndex(s => s.uid === activeExec.value!.uid)
-  if (idx <= 0) return true // 첫 번째 스텝은 항상 시작 가능
+  if (idx <= 0) return true
   return currentRun.value.steps[idx - 1]!.status === 'completed'
 })
 
-// Run status
-const runStatusColor = computed(() => {
-  if (!currentRun.value) return 'grey'
+const runStatusChipClass = computed(() => {
+  if (!currentRun.value) return 'lp-status-chip--grey'
   switch (currentRun.value.status) {
-    case 'running': return 'blue'
-    case 'completed': return 'green'
-    case 'idle': return 'orange'
-    default: return 'grey'
+    case 'running':   return 'lp-status-chip--blue'
+    case 'completed': return 'lp-status-chip--green'
+    default:          return 'lp-status-chip--orange'
   }
 })
+
 const runStatusLabel = computed(() => {
   if (!currentRun.value) return ''
   switch (currentRun.value.status) {
-    case 'running': return '실험 진행 중'
+    case 'running':   return '실험 진행 중'
     case 'completed': return '실험 완료'
-    case 'idle': return '실험 준비됨'
-    default: return '대기 중'
+    case 'idle':      return '실험 준비됨'
+    default:          return '대기 중'
   }
 })
+
+function stepStatusChipClass(status: StepExecStatus) {
+  switch (status) {
+    case 'completed': return 'lp-status-chip--green'
+    case 'running':   return 'lp-status-chip--blue'
+    case 'failed':    return 'lp-status-chip--red'
+    default:          return 'lp-status-chip--grey'
+  }
+}
 
 function onCreateRun() {
   if (!selectedWorkflow.value) return
@@ -311,7 +349,6 @@ function onStopStep(uid: number) {
   }).onOk(() => {
     stopStep(uid)
     $q.notify({ type: 'positive', message: '스텝이 완료되었습니다.' })
-    // 전체 실험 완료 확인
     if (currentRun.value?.status === 'completed') {
       $q.notify({ type: 'positive', icon: 'celebration', message: '모든 스텝이 완료되었습니다!' })
     }
@@ -322,39 +359,12 @@ function stepLabel(type: StepType) {
   return stepDefs[type]?.label ?? type
 }
 
-function statusIcon(status: StepExecStatus) {
-  switch (status) {
-    case 'pending': return 'radio_button_unchecked'
-    case 'running': return 'sensors'
-    case 'completed': return 'check_circle'
-    case 'failed': return 'error'
-  }
-}
-
-function statusIconColor(status: StepExecStatus) {
-  switch (status) {
-    case 'pending': return 'grey'
-    case 'running': return 'blue'
-    case 'completed': return 'green'
-    case 'failed': return 'red'
-  }
-}
-
-function statusBadgeColor(status: StepExecStatus) {
-  switch (status) {
-    case 'pending': return 'grey'
-    case 'running': return 'blue'
-    case 'completed': return 'green'
-    case 'failed': return 'red'
-  }
-}
-
 function statusLabel(status: StepExecStatus) {
   switch (status) {
-    case 'pending': return '대기'
-    case 'running': return '실행 중'
+    case 'pending':   return '대기'
+    case 'running':   return '실행 중'
     case 'completed': return '완료'
-    case 'failed': return '실패'
+    case 'failed':    return '실패'
   }
 }
 
@@ -364,7 +374,6 @@ function formatElapsed(s: number) {
   return `${m}:${String(sec).padStart(2, '0')}`
 }
 
-// Reset run when workflow changes
 let suppressWatch = false
 watch(selectedWorkflowId, (newId, oldId) => {
   if (suppressWatch) { suppressWatch = false; return }
@@ -391,3 +400,322 @@ watch(selectedWorkflowId, (newId, oldId) => {
 
 onUnmounted(() => cleanup())
 </script>
+
+<style scoped>
+.lp-page { padding: 24px; }
+
+/* ── Top bar ── */
+.lp-exp-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.lp-exp-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lp-exp-topbar__hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--orange);
+}
+
+.lp-select :deep(.q-field__control) {
+  background: var(--s2) !important;
+}
+
+/* ── Buttons ── */
+.lp-btn-primary {
+  background: var(--accent) !important;
+  color: white !important;
+  font-size: 12px;
+  border-radius: var(--r1) !important;
+}
+
+.lp-btn-success {
+  background: var(--green) !important;
+  color: white !important;
+  font-size: 12px;
+  border-radius: var(--r1) !important;
+}
+
+/* ── Empty ── */
+.lp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 0;
+  gap: 10px;
+}
+
+.lp-empty__title {
+  font-size: 15px;
+  color: var(--t2);
+  font-weight: 500;
+}
+
+/* ── Timeline ── */
+.lp-card {
+  background: var(--s1);
+  border: 1px solid var(--bd);
+  border-radius: var(--r2);
+  box-shadow: var(--shadow);
+}
+
+.lp-timeline-card {
+  padding: 16px 20px;
+  margin-bottom: 14px;
+}
+
+.lp-timeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.lp-timeline__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+
+.lp-timeline__circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--s3);
+  border: 2px solid var(--bd);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.lp-timeline__circle--done {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.lp-timeline__circle--running {
+  background: var(--blue-bg);
+  border-color: var(--blue);
+  box-shadow: 0 0 12px var(--blue-bd);
+  animation: lp-pulse 1.4s ease infinite;
+}
+
+.lp-timeline__circle--active {
+  border-color: var(--accent);
+}
+
+.lp-timeline__num {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--mono);
+  color: var(--t3);
+}
+
+.lp-timeline__label {
+  font-size: 10px;
+  color: var(--t3);
+  white-space: nowrap;
+  font-family: var(--sans);
+}
+
+.lp-timeline__label--done    { color: var(--green); }
+.lp-timeline__label--running { color: var(--blue); font-weight: 600; }
+
+.lp-timeline__elapsed {
+  font-size: 9px;
+  color: var(--t3);
+}
+
+.lp-timeline__connector {
+  flex: 0 0 40px;
+  height: 2px;
+  background: var(--bd);
+  border-radius: 1px;
+  margin-bottom: 24px;
+  flex-shrink: 0;
+  align-self: center;
+  margin-top: -18px;
+}
+
+.lp-timeline__connector--done {
+  background: var(--green);
+}
+
+/* ── Main area ── */
+.lp-exp-main {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+/* ── Step list ── */
+.lp-step-list {
+  width: 220px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.lp-step-list__header {
+  font-size: 10px;
+  color: var(--t3);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid var(--bd);
+}
+
+.lp-step-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: background 0.12s;
+}
+
+.lp-step-item:hover {
+  background: var(--s2);
+}
+
+.lp-step-item--active {
+  background: var(--accent-bg);
+  border-left-color: var(--accent);
+}
+
+.lp-step-item__circle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--s3);
+  border: 1.5px solid var(--bd);
+  font-size: 9px;
+  color: var(--t3);
+}
+
+.lp-step-item__circle--done {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.lp-step-item__circle--running {
+  background: var(--blue-bg);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.lp-step-item__label {
+  flex: 1;
+  font-size: 12px;
+  color: var(--t1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lp-step-item__label--active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Step detail ── */
+.lp-step-detail {
+  flex: 1;
+  padding: 18px;
+}
+
+.lp-step-detail__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.lp-step-detail__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: var(--s3);
+  border: 1px solid var(--bd);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.lp-step-detail__icon--done {
+  background: var(--green-bg);
+  border-color: var(--green-bd);
+}
+
+.lp-step-detail__icon--running {
+  background: var(--blue-bg);
+  border-color: var(--blue-bd);
+}
+
+.lp-step-detail__meta {
+  flex: 1;
+}
+
+.lp-step-detail__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--t1);
+  margin-bottom: 2px;
+}
+
+.lp-step-detail__device {
+  font-size: 11px;
+  color: var(--t3);
+}
+
+.lp-step-detail__subhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--t1);
+  margin-bottom: 12px;
+}
+
+.lp-step-detail__content {
+  padding-top: 4px;
+}
+
+/* ── Pulse dot ── */
+.lp-pulse-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+  animation: lp-pulse 1.4s ease infinite;
+}
+
+/* ── Mono ── */
+.lp-mono {
+  font-family: var(--mono) !important;
+}
+</style>

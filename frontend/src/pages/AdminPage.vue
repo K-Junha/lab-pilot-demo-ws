@@ -1,103 +1,145 @@
 <template>
-  <q-page padding>
-    <div class="text-h5 q-mb-md">관리자</div>
+  <q-page class="lp-page">
+    <!-- Page header -->
+    <div class="lp-page-head">
+      <h1 class="lp-page-head__title">관리자</h1>
+    </div>
 
-    <q-tabs v-model="tab" dense align="left" class="q-mb-md">
-      <q-tab name="devices" label="장치 관리" />
-      <q-tab name="users" label="사용자 관리" />
-    </q-tabs>
+    <!-- Tabs -->
+    <div class="lp-tabs">
+      <button
+        class="lp-tab"
+        :class="{ 'lp-tab--active': tab === 'devices' }"
+        @click="tab = 'devices'"
+      >장치 관리</button>
+      <button
+        class="lp-tab"
+        :class="{ 'lp-tab--active': tab === 'users' }"
+        @click="tab = 'users'"
+      >사용자 관리</button>
+    </div>
 
-    <q-tab-panels v-model="tab" animated>
-      <!-- ── 장치 관리 탭 ─────────────────────────────────────────────── -->
-      <q-tab-panel name="devices">
-        <div class="text-subtitle1 q-mb-sm">ss_manager 목록</div>
+    <!-- ── 장치 관리 ── -->
+    <div v-show="tab === 'devices'">
+      <div class="lp-section-label">ss_manager 목록</div>
 
-        <q-table
-          :rows="managers"
-          :columns="managerColumns"
-          row-key="id"
-          flat
-          bordered
-          :loading="managersLoading"
-          no-data-label="등록된 ss_manager가 없습니다"
-          class="q-mb-lg"
-        >
-          <template #body-cell-online="props">
-            <q-td :props="props">
-              <q-badge :color="props.value ? 'positive' : 'grey'" :label="props.value ? '온라인' : '오프라인'" />
-            </q-td>
-          </template>
-          <template #body-cell-actions="props">
-            <q-td :props="props">
-              <q-btn flat dense size="sm" label="삭제" color="negative" @click="deleteManager(props.row)" />
-            </q-td>
-          </template>
-        </q-table>
+      <div v-if="managersLoading" class="lp-loading">
+        <q-spinner size="24px" style="color: var(--accent);" />
+      </div>
 
-        <div class="text-subtitle1 q-mb-sm">새 ss_manager 등록</div>
-        <div class="row q-col-gutter-sm items-end">
-          <div class="col-12 col-sm-3">
-            <q-input v-model="form.name" label="이름" outlined dense />
-          </div>
-          <div class="col-12 col-sm-3">
-            <q-input v-model="form.host" label="호스트 (IP)" outlined dense />
-          </div>
-          <div class="col-6 col-sm-2">
-            <q-input v-model.number="form.ws_port" label="WS 포트" type="number" outlined dense />
-          </div>
-          <div class="col-6 col-sm-2">
-            <q-input v-model="form.api_key" label="API Key" outlined dense />
-          </div>
-          <div class="col-12 col-sm-2">
-            <q-btn label="등록" color="primary" unelevated :loading="registering" @click="registerManager" />
-          </div>
-        </div>
-      </q-tab-panel>
+      <table v-else class="lp-table lp-table--mb">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>이름</th>
+            <th>호스트</th>
+            <th>WS 포트</th>
+            <th>상태</th>
+            <th>마지막 연결</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="managers.length === 0">
+            <td colspan="7" class="lp-table__empty">등록된 ss_manager가 없습니다</td>
+          </tr>
+          <tr v-for="row in managers" :key="row.id" class="lp-table__row">
+            <td class="lp-mono lp-text-t3">{{ row.id }}</td>
+            <td class="lp-table__name">{{ row.name }}</td>
+            <td class="lp-mono lp-text-t2">{{ row.host }}</td>
+            <td class="lp-mono lp-text-t3">{{ row.ws_port }}</td>
+            <td>
+              <span class="lp-status-chip" :class="row.online ? 'lp-status-chip--green' : 'lp-status-chip--grey'">
+                <span v-if="row.online" class="lp-conn-dot lp-conn-dot--online" />
+                {{ row.online ? '온라인' : '오프라인' }}
+              </span>
+            </td>
+            <td class="lp-mono lp-text-t3">{{ row.last_seen ? new Date(row.last_seen).toLocaleString('ko-KR') : '-' }}</td>
+            <td>
+              <q-btn
+                flat dense no-caps size="sm"
+                icon="delete"
+                class="lp-action-btn lp-action-btn--danger"
+                @click="deleteManager(row)"
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-      <!-- ── 사용자 관리 탭 ───────────────────────────────────────────── -->
-      <q-tab-panel name="users">
-        <div class="text-subtitle1 q-mb-sm">사용자 관리</div>
+      <!-- Register form -->
+      <div class="lp-section-label">새 ss_manager 등록</div>
+      <div class="lp-form-row">
+        <q-input v-model="form.name" label="이름" outlined dense class="lp-input lp-input--flex" />
+        <q-input v-model="form.host" label="호스트 (IP)" outlined dense class="lp-input lp-input--flex" />
+        <q-input v-model.number="form.ws_port" label="WS 포트" type="number" outlined dense class="lp-input lp-input--sm" />
+        <q-input v-model="form.api_key" label="API Key" outlined dense class="lp-input lp-input--flex" />
+        <q-btn
+          unelevated no-caps
+          label="등록"
+          class="lp-btn-primary"
+          :loading="registering"
+          @click="registerManager"
+        />
+      </div>
+    </div>
 
-        <q-table
-          :rows="users"
-          :columns="userColumns"
-          row-key="user_id"
-          flat
-          bordered
-          :loading="usersLoading"
-        >
-          <template #body-cell-role="props">
-            <q-td :props="props">
-              <q-badge :color="props.value === 'admin' ? 'deep-purple' : 'teal'" :label="props.value" />
-            </q-td>
-          </template>
-          <template #body-cell-actions="props">
-            <q-td :props="props">
-              <q-btn-group flat>
+    <!-- ── 사용자 관리 ── -->
+    <div v-show="tab === 'users'">
+      <div class="lp-section-label">사용자 목록</div>
+
+      <div v-if="usersLoading" class="lp-loading">
+        <q-spinner size="24px" style="color: var(--accent);" />
+      </div>
+
+      <table v-else class="lp-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>사용자명</th>
+            <th>이메일</th>
+            <th>Role</th>
+            <th>가입일</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="users.length === 0">
+            <td colspan="6" class="lp-table__empty">사용자가 없습니다</td>
+          </tr>
+          <tr v-for="user in users" :key="user.user_id" class="lp-table__row">
+            <td class="lp-mono lp-text-t3">{{ user.user_id }}</td>
+            <td class="lp-table__name">{{ user.username }}</td>
+            <td class="lp-mono lp-text-t2">{{ user.email || '-' }}</td>
+            <td>
+              <span class="lp-role-chip" :class="user.role === 'admin' ? 'lp-role-chip--admin' : 'lp-role-chip--user'">
+                {{ user.role === 'admin' ? '관리자' : '연구원' }}
+              </span>
+            </td>
+            <td class="lp-mono lp-text-t3">{{ new Date(user.created_at).toLocaleDateString('ko-KR') }}</td>
+            <td>
+              <div class="lp-action-row" @click.stop>
                 <q-btn
-                  flat
-                  dense
-                  size="sm"
-                  :label="props.row.role === 'admin' ? '→ user' : '→ admin'"
-                  :color="props.row.role === 'admin' ? 'orange' : 'deep-purple'"
-                  :disable="props.row.user_id === authStore.user?.user_id"
-                  @click="changeRole(props.row)"
+                  flat dense no-caps size="sm"
+                  :label="user.role === 'admin' ? '→ user' : '→ admin'"
+                  class="lp-action-btn"
+                  :class="user.role === 'admin' ? 'lp-action-btn--orange' : 'lp-action-btn--purple'"
+                  :disable="user.user_id === authStore.user?.user_id"
+                  @click="changeRole(user)"
                 />
                 <q-btn
-                  flat
-                  dense
-                  size="sm"
-                  label="삭제"
-                  color="negative"
-                  :disable="props.row.user_id === authStore.user?.user_id"
-                  @click="deleteUser(props.row)"
+                  flat dense no-caps size="sm"
+                  icon="delete"
+                  class="lp-action-btn lp-action-btn--danger"
+                  :disable="user.user_id === authStore.user?.user_id"
+                  @click="deleteUser(user)"
                 />
-              </q-btn-group>
-            </q-td>
-          </template>
-        </q-table>
-      </q-tab-panel>
-    </q-tab-panels>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </q-page>
 </template>
 
@@ -105,7 +147,6 @@
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useAuthStore } from 'src/stores/auth'
-import type { QTableColumn } from 'quasar'
 
 const API_BASE = 'http://localhost:8000/api'
 
@@ -139,17 +180,6 @@ const managers = ref<ManagerRow[]>([])
 const managersLoading = ref(false)
 const registering = ref(false)
 const form = ref<ManagerForm>({ name: '', host: '', ws_port: 8765, api_key: '' })
-
-const managerColumns: QTableColumn[] = [
-  { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true },
-  { name: 'name', label: '이름', field: 'name', align: 'left', sortable: true },
-  { name: 'host', label: '호스트', field: 'host', align: 'left' },
-  { name: 'ws_port', label: 'WS 포트', field: 'ws_port', align: 'left' },
-  { name: 'online', label: '상태', field: 'online', align: 'center' },
-  { name: 'last_seen', label: '마지막 연결', field: 'last_seen', align: 'left',
-    format: (v: string | null) => (v ? new Date(v).toLocaleString('ko-KR') : '-') },
-  { name: 'actions', label: '관리', field: 'id', align: 'center' },
-]
 
 async function loadManagers() {
   managersLoading.value = true
@@ -220,16 +250,6 @@ interface UserRow {
 const users = ref<UserRow[]>([])
 const usersLoading = ref(false)
 
-const userColumns: QTableColumn[] = [
-  { name: 'user_id', label: 'ID', field: 'user_id', align: 'left', sortable: true },
-  { name: 'username', label: '사용자명', field: 'username', align: 'left', sortable: true },
-  { name: 'email', label: '이메일', field: 'email', align: 'left' },
-  { name: 'role', label: 'Role', field: 'role', align: 'left', sortable: true },
-  { name: 'created_at', label: '가입일', field: 'created_at', align: 'left',
-    format: (v: string) => new Date(v).toLocaleDateString('ko-KR') },
-  { name: 'actions', label: '관리', field: 'user_id', align: 'center' },
-]
-
 async function loadUsers() {
   usersLoading.value = true
   try {
@@ -284,3 +304,250 @@ onMounted(() => {
   void loadUsers()
 })
 </script>
+
+<style scoped>
+.lp-page { padding: 24px; }
+
+/* ── Page head ── */
+.lp-page-head {
+  margin-bottom: 20px;
+}
+
+.lp-page-head__title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--t1);
+  margin: 0;
+}
+
+/* ── Tabs ── */
+.lp-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--bd);
+  margin-bottom: 24px;
+}
+
+.lp-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--t3);
+  cursor: pointer;
+  font-family: var(--sans);
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px;
+}
+
+.lp-tab:hover {
+  color: var(--t1);
+}
+
+.lp-tab--active {
+  color: var(--t1);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Section label ── */
+.lp-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--t2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+/* ── Loading ── */
+.lp-loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+/* ── Table ── */
+.lp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 32px;
+}
+
+.lp-table--mb {
+  margin-bottom: 28px;
+}
+
+.lp-table th {
+  background: var(--s2);
+  color: var(--t3);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--bd);
+  white-space: nowrap;
+}
+
+.lp-table__row {
+  border-bottom: 1px solid var(--bd);
+  transition: background 0.1s;
+}
+
+.lp-table__row:hover {
+  background: var(--s2);
+}
+
+.lp-table td {
+  padding: 9px 12px;
+  color: var(--t1);
+  vertical-align: middle;
+}
+
+.lp-table__name {
+  font-weight: 500;
+}
+
+.lp-table__empty {
+  text-align: center;
+  color: var(--t3);
+  padding: 32px 12px;
+  font-size: 13px;
+}
+
+/* ── Form row ── */
+.lp-form-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.lp-input :deep(.q-field__control) {
+  background: var(--s2) !important;
+  border-color: var(--bd) !important;
+}
+
+.lp-input :deep(.q-field__native),
+.lp-input :deep(.q-field__input) {
+  color: var(--t1) !important;
+}
+
+.lp-input :deep(.q-field__label) {
+  color: var(--t3) !important;
+}
+
+.lp-input--flex {
+  flex: 1;
+  min-width: 120px;
+}
+
+.lp-input--sm {
+  width: 110px;
+  flex-shrink: 0;
+}
+
+/* ── Buttons ── */
+.lp-btn-primary {
+  background: var(--accent) !important;
+  color: white !important;
+  font-size: 12px;
+  border-radius: var(--r1) !important;
+  padding: 6px 16px !important;
+  flex-shrink: 0;
+}
+
+/* ── Action row ── */
+.lp-action-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.lp-action-btn {
+  color: var(--t3) !important;
+  border-radius: var(--r1) !important;
+  font-size: 11px !important;
+  padding: 2px 7px !important;
+}
+
+.lp-action-btn:hover {
+  background: var(--s3) !important;
+  color: var(--t1) !important;
+}
+
+.lp-action-btn--danger {
+  color: var(--red) !important;
+}
+
+.lp-action-btn--danger:hover {
+  background: var(--red-bg) !important;
+}
+
+.lp-action-btn--orange {
+  color: var(--orange) !important;
+  background: var(--orange-bg) !important;
+  border: 1px solid var(--orange-bd) !important;
+}
+
+.lp-action-btn--purple {
+  color: var(--accent) !important;
+  background: var(--accent-bg) !important;
+  border: 1px solid var(--accent-bd) !important;
+}
+
+/* ── Role chip ── */
+.lp-role-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--mono);
+}
+
+.lp-role-chip--admin {
+  background: rgba(139, 92, 246, 0.12);
+  color: #a78bfa;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+.lp-role-chip--user {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid var(--accent-bd);
+}
+
+/* ── Connection dot ── */
+.lp-conn-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.lp-conn-dot--online {
+  animation: lp-pulse 1.4s ease infinite;
+}
+
+/* ── Text utilities ── */
+.lp-text-t2 {
+  color: var(--t2) !important;
+}
+
+.lp-text-t3 {
+  color: var(--t3) !important;
+}
+
+/* ── Mono ── */
+.lp-mono {
+  font-family: var(--mono) !important;
+}
+</style>

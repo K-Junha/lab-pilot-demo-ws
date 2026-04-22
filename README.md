@@ -2,69 +2,95 @@
 
 유리·세라믹 소재 연구를 위한 실험 워크플로우 자동화 플랫폼
 
-> **Live Demo:** [https://inkyu0317.github.io/lab-pilot-demo/](https://inkyu0317.github.io/lab-pilot-demo/)
-
 ### 관련 프로젝트
 
 | 레포지토리 | 설명 |
 |-----------|------|
-| [sila-server-manager](https://github.com/InKyu0317/sila-server-manager) | CB310 저울 등 실험 장비 SiLA 2 서버 모음 |
-| [material-navigator-lib](https://github.com/InKyu0317/material-navigator-lib) | 유리 산화물 정적 데이터 Python 패키지 (mat_nav_lib) |
+| [ss_manager](https://github.com/K-Junha/lab-pilot-demo-ws) | 실험실 계측 장비 관리 GUI 앱 (이 레포에 포함) |
+| [material-navigator-lib](https://github.com/InKyu0317/material-navigator-lib) | 유리 산화물 정적 데이터 Python 패키지 |
+
+---
+
+## 전체 시스템 아키텍처
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        사용자 브라우저                            │
+│                  http://localhost:9000                           │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │ HTTP REST / WebSocket
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              lab-pilot Backend  :8000                           │
+│  FastAPI + SQLAlchemy + PostgreSQL + JWT                        │
+│                                                                 │
+│  /api/auth      — 회원가입 / 로그인 (JWT)                        │
+│  /api/workflows — 워크플로우 CRUD (DB)                           │
+│  /api/managers  — ss_manager 등록/조회 (DB)                     │
+│  /ws/balance    — 저울 데이터 WebSocket 브릿지                    │
+│  /ws/devices    — 장치 상태 WebSocket 스트림                     │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │ WebSocket  ws://localhost:8765
+                            │ (lab-pilot → ss_manager 연결)
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              ss_manager  (Electron GUI 앱)                      │
+│                                                                 │
+│  Python Core                                                    │
+│  ├─ REST API    :8766  — 장치 CRUD / 설정                        │
+│  └─ WS Server   :8765  — lab-pilot 연결 수신 (frozen contract)   │
+│                                                                 │
+│  Electron + Vue/Quasar GUI                                      │
+│  └─ 장치 관리 / 실시간 모니터 / 설정                               │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │ gRPC  :50051
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              balance_server.py  (SiLA2 gRPC 서버)               │
+│  CB310 저울  RS-232 (COM·, 9600bps 7E1) → WeightMeasurement     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 연결 흐름
+
+1. **ss_manager** 실행 → `balance_server.py` 자동 시작 → WS 서버 :8765 열림
+2. **lab-pilot Backend** 실행 → DB에 등록된 ss_manager에 WebSocket 연결 시도
+3. ss_manager가 `auth_ok` 응답 → 장치 목록(UUID) 수신 → 0.5초 폴링으로 Weight 데이터 스트리밍
+4. **lab-pilot Frontend** 로그인 → `/ws/balance`로 실시간 저울 데이터 수신
 
 ---
 
 ## 주요 기능
 
-### 1. 모니터링 (Monitoring)
-- SiLA2 기반 실험 장비 실시간 상태 모니터링
-- 장비 관리자(Manager) → 서버(Server) 계층 구조 표시
-- 장비별 온라인/오프라인 상태, 온도, 압력, 진행률 확인
-- **정확한 장비 연결 감지**: SiLA Weight 구독으로 물리 장치(저울) 실제 연결 여부 판별 (NaN = 미연결)
+### 인증 (Auth)
+- JWT Bearer 토큰 기반 인증
+- 회원가입 / 로그인 / 내 정보 조회
+- 관리자(admin) 권한: 사용자 관리, 전체 워크플로우 조회
 
-### 2. 워크플로우 (Workflow)
-**다중 조성(Multi-composition) 지원 탭 기반 워크플로우 편집기**
+### 워크플로우 (Workflow)
+- 다중 조성(Multi-composition) 탭 기반 편집기
+- 9단계 실험 스텝: 조성 설계 → 칭량 → 혼합 → 성형 → 소성 → 열처리 → 가공 → 분석
+- 워크플로우 상태 흐름: **계획중 → 진행중 → 완료**
+- 워크플로우 복사, 메모 작성
+- DB 저장 (사용자별 격리)
 
-| 스텝 | 설명 |
-|------|------|
-| 조성 목록 | 워크플로우 내 여러 유리 조성을 AG Grid로 관리 (추가/편집/삭제) |
-| 조성 설계 | 산화물 드롭다운 선택(70종), 배합비(wt%), 유리 종류 선택, 목표 물성 설정 (Tg, CTE, 밀도 등) |
-| 칭량 (Weighing) | 조성별 배치 중량 및 원료 칭량 설정 |
-| 혼합 (Mixing) | 혼합 시간, 메모 설정 |
-| 성형 (Forming) | 형상(원형/바형) 및 치수 설정 |
-| 소성 (Firing) | 다단 소성 프로파일 (승온율, 목표 온도, 유지 시간) 설정 |
-| 열처리 (Heat Treatment) | 어닐링/템퍼링 온도, 시간, 냉각 방법 설정 |
-| 가공 (Machining) | 가공 형상 및 정밀 치수 설정 |
-| 분석 (Analysis) | 분석 항목별 측정값 입력 및 합격/불합격 판정 |
+### 실험 실행 (Experiment)
+- 워크플로우 선택 후 단계별 진행
+- Step 탭 잠금 (계획중 상태에서는 스텝 접근 불가)
+- [실험 완료] 버튼으로 완료 처리
 
-- **SiLA 장비 선택**: 모든 스텝에서 실험 장비를 지정 가능
-- **AG Grid**: 조성 목록, 산화물 테이블, 물성 목표 테이블에 적용
-- **localStorage 자동 저장**: 워크플로우 데이터 로컬 영구 보존
+### 모니터링 (Monitoring)
+- ss_manager에 등록된 장치의 실시간 상태 표시
+- 저울: 실시간 중량 수치 + 물리 연결 상태 (CONNECTED / OFFLINE)
 
-### 3. 실험 실행 (Experiment)
-- 워크플로우 선택 후 단계별 실험 시뮬레이션 실행
-- **실시간 차트** (vue-chartjs): 소성/열처리 온도 곡선 시각화
-- 스텝별 진행 상태 타임라인 (대기/실행중/완료/실패)
-- 실험 결과 요약 (조성, 칭량, 분석 결과)
+### 실험 로그 / 결과
+- 실험 이벤트 로그 (필터 + 사이드패널)
+- 완료된 실험 카드 → 상세 결과 조회
 
-### 4. 테마 시스템 (Theme)
-**툴바 드롭다운으로 실시간 전환 가능한 9개 테마**
-
-| 테마 | 설명 |
-|------|------|
-| 네이비 다크 | 전문적 · 신뢰감 |
-| 차콜 그레이 | 모던 · 미니멀 |
-| 미드나이트 그린 | 자연 · 안정감 |
-| 슬레이트 블루 | 세련 · 차분 |
-| 딥 오션 | 고급 · 대비 강함 |
-| 웜 다크 | 따뜻함 · 편안함 |
-| 노르딕 | 깔끔 · 북유럽 감성 |
-| 사이버 테크 | 미래적 · 강렬 |
-| 기본 라이트 | Quasar 기본 라이트 테마 |
-
-- **폰트 변경**: Roboto, Inter, Pretendard, Noto Sans KR, IBM Plex Sans, JetBrains Mono
-- **폰트 크기**: 12px ~ 18px 조절
-- **AG Grid 테마 동기화**: 선택된 테마에 맞춰 AG Grid 색상 자동 변경
-- **설정 영구 보존**: localStorage에 테마/폰트/크기 저장
+### 관리자 (Admin)
+- 사용자 목록 관리 (생성/삭제/권한 변경)
+- 전체 워크플로우 조회 (소유자 표시)
+- ss_manager 등록 (host:port + API 키)
 
 ---
 
@@ -76,207 +102,161 @@
 | Framework | Vue 3 (Composition API) + TypeScript 5.9 |
 | UI | Quasar v2 (Vite) |
 | 데이터 그리드 | AG Grid Community v35 |
-| 차트 | vue-chartjs + Chart.js 4.x |
 | 상태 관리 | Pinia v3 + Composables |
-| 라우팅 | Vue Router v5 (hash mode) |
+| 라우팅 | Vue Router v5 |
 | 패키지 관리 | pnpm v10 |
-| Node.js | v22+ |
 
 ### Backend
 | 카테고리 | 기술 |
 |----------|------|
-| Framework | FastAPI 0.115+ |
-| 서버 | uvicorn |
-| 언어 | Python 3.10+ (conda `sila2_env`) |
-| 장비 통신 | SiLA 2 (sila2==0.14.0) gRPC → WebSocket 브릿지 |
-| 소재 데이터 | [mat_nav_lib](https://github.com/InKyu0317/material-navigator-lib) — 70종 산화물 정적 패키지 |
+| Framework | FastAPI 0.115+ (async) |
+| ORM | SQLAlchemy 2.x async + asyncpg |
+| DB | PostgreSQL |
+| 마이그레이션 | Alembic |
+| 인증 | JWT (python-jose) + bcrypt (passlib) |
+| 설정 | pydantic-settings + .env |
+| 장비 통신 | SiLA2 gRPC → WebSocket 브릿지 |
+
+### ss_manager (장치 관리 GUI)
+| 카테고리 | 기술 |
+|----------|------|
+| GUI | Electron + Vue 3 + Quasar v2 |
+| 관리 API | FastAPI REST :8766 |
+| 장치 브릿지 | WebSocket 서버 :8765 |
+| 장치 통신 | SiLA2 gRPC (sila2 0.14.0) |
+| 저장 | `~/.ss_manager/devices.json`, `settings.json` |
 
 ---
 
-## 전체 프로젝트 구조
+## 프로젝트 구조
 
 ```
-DEMO/
-├── start-all.bat               # 전체 서버 시작 (Backend + Balance SiLA + Frontend)
-├── stop-all.bat                # 전체 서버 중지
+lab-pilot-demo/
+├── frontend/                     # Vue 3 + Quasar 프론트엔드
+│   ├── src/
+│   │   ├── css/app.css           # 디자인 토큰 (Dark Scientific 테마)
+│   │   ├── layouts/
+│   │   │   └── MainLayout.vue    # 사이드바 + 상단 툴바
+│   │   ├── pages/
+│   │   │   ├── LoginPage.vue
+│   │   │   ├── MonitoringPage.vue
+│   │   │   ├── WorkflowPage.vue
+│   │   │   ├── ExperimentPage.vue
+│   │   │   ├── LogPage.vue
+│   │   │   ├── ResultsPage.vue
+│   │   │   └── AdminPage.vue
+│   │   ├── components/workflow/  # WorkflowEditor + 9개 스텝
+│   │   └── composables/          # useAuth, useWorkflows, useSilaDevices ...
+│   └── e2e/                      # Playwright e2e 테스트
 │
-├── lab-pilot-demo/             # 본 레포지토리
-│   ├── frontend/               # Vue 3 + Quasar 프론트엔드
-│   │   └── src/
-│   │       ├── layouts/
-│   │       │   └── MainLayout.vue          # 사이드바 + 테마/폰트 툴바
-│   │       ├── pages/
-│   │       │   ├── MonitoringPage.vue       # SiLA 장비 모니터링
-│   │       │   ├── WorkflowPage.vue         # 워크플로우 목록/편집
-│   │       │   └── ExperimentPage.vue       # 실험 실행 시뮬레이션
-│   │       ├── components/
-│   │       │   └── workflow/
-│   │       │       ├── types.ts             # 공용 타입 정의
-│   │       │       ├── gridTheme.ts         # 반응형 AG Grid 테마
-│   │       │       ├── WorkflowEditor.vue   # 탭 기반 워크플로우 편집기
-│   │       │       ├── WorkflowList.vue     # AG Grid 워크플로우 목록
-│   │       │       ├── DeviceSelector.vue   # SiLA 장비 선택
-│   │       │       └── steps/              # 9개 스텝 컴포넌트
-│   │       │           ├── CompositionListStep.vue
-│   │       │           ├── CompositionStep.vue
-│   │       │           ├── WeighingStep.vue
-│   │       │           ├── MixingStep.vue
-│   │       │           ├── FormingStep.vue
-│   │       │           ├── FiringStep.vue
-│   │       │           ├── HeatTreatStep.vue
-│   │       │           ├── MachiningStep.vue
-│   │       │           └── AnalysisStep.vue
-│   │       └── composables/
-│   │           ├── useTheme.ts              # 테마/폰트/크기 관리
-│   │           ├── useWorkflows.ts          # 워크플로우 CRUD + localStorage
-│   │           ├── useSilaDevices.ts        # SiLA 장비 목록 관리
-│   │           ├── useMaterials.ts          # mat_nav_lib API 연동 (산화물 목록)
-│   │           └── useExperimentRunner.ts   # 실험 시뮬레이션 엔진
-│   └── backend/                # FastAPI 백엔드
-│       └── app/
-│           ├── main.py                     # FastAPI 진입점 + CORS
-│           └── api/
-│               ├── devices.py              # SiLA 장비 상태 API (gRPC Weight 구독으로 물리 연결 검증)
-│               ├── materials.py            # 산화물 목록 API (/api/materials/oxides)
-│               └── ws.py                   # WebSocket SiLA 브릿지
+├── backend/                      # FastAPI 백엔드
+│   └── app/
+│       ├── main.py               # FastAPI 진입점 + lifespan (ws_manager_client)
+│       ├── models.py             # SQLAlchemy 모델
+│       ├── database.py           # async DB 세션
+│       └── api/
+│           ├── auth.py           # /api/auth — 회원가입/로그인/me
+│           ├── workflows.py      # /api/workflows — CRUD
+│           ├── managers.py       # /api/managers — ss_manager 등록
+│           ├── devices.py        # /api/devices — 장치 상태 조회
+│           └── ws.py             # /ws/* — WebSocket 브릿지
 │
-├── ss_manager/                 # github.com/InKyu0317/sila-server-manager
-│   └── balance/
-│       ├── balance_server.py   # CB310 저울 SiLA 2 서버 (RS-232 :50051)
-│       └── generated/          # WeightMeasurement SiLA Feature 코드
-│
-└── mat_nav_lib/                # github.com/InKyu0317/material-navigator-lib
-    └── mat_nav_lib/
-        ├── __init__.py         # get_oxides, get_oxide_formulas export
-        └── oxides.py           # 70종 산화물 정적 데이터
+└── ss_manager/                   # 장치 관리 GUI 앱 (별도 실행)
+    ├── core/                     # Python FastAPI 백엔드
+    │   ├── main.py               # REST :8766 + WS 서버 시작
+    │   ├── ws_server.py          # WS :8765 — lab-pilot 연결 수신
+    │   ├── device_registry.py    # 장치 CRUD (devices.json)
+    │   ├── clients/
+    │   │   ├── balance.py        # CB310 gRPC 클라이언트
+    │   │   └── base.py           # DeviceClient ABC
+    │   └── balance/              # balance_server.py (SiLA2 gRPC 서버)
+    └── gui/                      # Electron + Vue/Quasar
+        ├── src-electron/         # electron-main.ts (Python spawn + tray)
+        └── src/
+            ├── layouts/MainLayout.vue
+            └── pages/
+                ├── DevicesPage.vue   # 장치 관리
+                ├── MonitorPage.vue   # 실시간 모니터
+                └── SettingsPage.vue  # 설정
 ```
 
 ### 포트 구성
 
 | 서비스 | 포트 | 설명 |
 |--------|------|------|
-| Vue Frontend | :9002 | Quasar dev server |
-| FastAPI Backend | :8000 | REST API + WebSocket |
-| Balance SiLA | :50051 | CB310 저울 gRPC |
+| Frontend (dev) | :9000 | Quasar dev server |
+| Backend | :8000 | FastAPI REST + WebSocket |
+| ss_manager REST | :8766 | GUI 관리 API |
+| ss_manager WS | :8765 | lab-pilot 연결 수신 |
+| Balance gRPC | :50051 | CB310 저울 SiLA2 서버 |
 
 ---
 
 ## 실행 방법
 
-### 전체 서버 한 번에 시작 (권장)
+### 사전 요구사항
 
-`DEMO/` 루트의 배치 파일로 모든 서버를 시작/종료할 수 있습니다.
-
-```
-start-all.bat   # Backend + Balance SiLA + Frontend 동시 시작
-stop-all.bat    # 전체 서버 종료
-```
-
-### 개별 실행
-
-#### 사전 요구사항
 - Node.js v22+, pnpm v10+
-- Python 3.10+, conda 환경 `sila2_env`
-- [mat_nav_lib](https://github.com/InKyu0317/material-navigator-lib) 설치 (`pip install -e ./mat_nav_lib`)
+- Python 3.11, conda 환경 `sila2_env`
+- PostgreSQL 실행 중
+- `mat_nav_lib` 설치: `pip install -e ./mat_nav_lib`
 
-#### Frontend
+### 1. ss_manager 실행 (장치 관리 GUI)
+
+```bash
+cd ss_manager/gui
+pnpm install
+pnpm electron:dev
+```
+
+> GUI 앱이 열리면서 Python 서버가 자동 시작됩니다.
+> 장치 탭에서 CB310 저울을 추가하세요 (COM3, gRPC 50051).
+
+Python만 단독 실행하려면:
+
+```bash
+cd ss_manager
+conda activate sila2_env
+python -m core.main --port 8766 --ws-port 8765
+```
+
+### 2. lab-pilot Backend 실행
+
+```bash
+cd backend
+conda activate sila2_env
+# 최초 1회: DB 마이그레이션
+alembic upgrade head
+# 서버 실행
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### 3. lab-pilot Frontend 실행
 
 ```bash
 cd frontend
 pnpm install
 pnpm dev
+# → http://localhost:9000
 ```
 
-#### Backend
+### 4. ss_manager 등록 (최초 1회)
+
+1. 브라우저에서 `http://localhost:9000` 접속 → 회원가입 → 로그인
+2. 관리자 계정으로 **Admin → SS Manager 탭** 이동
+3. [새 Manager 추가]: host `127.0.0.1`, port `8765`, API 키 `local-dev-key`
+4. Backend 재시작 → 콘솔에 `연결 성공: manager_id=1` 확인
+
+---
+
+## 테스트
 
 ```bash
-cd backend
-# mat_nav_lib 경로를 PYTHONPATH에 추가
-set PYTHONPATH=../../../mat_nav_lib   # Windows
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-#### Balance SiLA Server
-
-[sila-server-manager](https://github.com/InKyu0317/sila-server-manager) 레포 참조
-
-```bash
-cd ss_manager/balance
-python balance_server.py --com COM11 --port 50051
-```
-
-### 프로덕션 빌드 (Frontend)
-
-```bash
+# e2e (Playwright) — 백엔드 불필요, API mock
 cd frontend
-pnpm build
+pnpm test:e2e
+# → 24 passed, 1 skipped
 ```
-
-빌드 결과물은 `frontend/dist/spa/` 에 생성됩니다.
-
----
-
-## 시스템 아키텍처
-
-```mermaid
-flowchart TB
-    subgraph USER["👤 사용자 (Browser)"]
-        UI["Vue 3 + Quasar  localhost:9002"]
-    end
-
-    subgraph FRONTEND["🖥️ lab-pilot-demo / frontend"]
-        direction TB
-        WF["WorkflowPage"]
-        EXP["ExperimentPage"]
-        MON["MonitoringPage"]
-
-        subgraph COMPOSABLES["Composables"]
-            uW["useWorkflows\nlocalStorage CRUD"]
-            uM["useMaterials\n산화물 목록 fetch"]
-            uS["useSilaDevices\n장비 목록"]
-            uER["useExperimentRunner\n실험 시뮬레이션"]
-            uWs["useBalanceWs\nWebSocket 실시간 중량"]
-        end
-    end
-
-    subgraph BACKEND["⚙️ lab-pilot-demo / backend  :8000"]
-        direction LR
-        API_DEV["/api/devices"]
-        API_MAT["/api/materials/oxides"]
-        API_WS["/api/ws/balance  WebSocket"]
-    end
-
-    subgraph MATLIB["📦 material-navigator-lib  (mat_nav_lib)"]
-        OXIDES["OXIDE_LIST\n70종 산화물 정적 데이터\nformula · name_ko · molar_mass · category"]
-    end
-
-    subgraph SILA["🔌 sila-server-manager  :50051"]
-        BAL_SERVER["Balance SiLA Server\nCB310 gRPC 서버"]
-    end
-
-    subgraph HW["🔧 Hardware"]
-        CB310["CB310 저울\nRS-232 COM11  9600bps 7E1"]
-    end
-
-    USER <-->|HTTP / WS| FRONTEND
-    WF --> uW & uM & uS
-    EXP --> uER & uWs
-    MON --> uS
-
-    uM -->|"GET /api/materials/oxides"| API_MAT
-    uS -->|"GET /api/devices"| API_DEV
-    uWs <-->|WebSocket| API_WS
-
-    API_MAT -->|"get_oxides()"| OXIDES
-    API_WS <-->|gRPC Subscribe| BAL_SERVER
-    BAL_SERVER <-->|"serial read/write 50ms"| CB310
-```
-
----
-
-## 배포
-
-GitHub Actions를 통해 `main` 브랜치 push 시 자동으로 GitHub Pages에 배포됩니다.
 
 ---
 

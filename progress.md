@@ -1,10 +1,10 @@
 # LAB PILOT — Progress
 
-> 최종 업데이트: 2026-04-16
+> 최종 업데이트: 2026-04-20
 
 ---
 
-## 현재 단계: Phase 4 완료 · Phase 5 완료 — 다음 작업 대기
+## 현재 단계: Phase 6 완료 (UI 다크 테마 리디자인) — 전체 완료
 
 ### 플랜 산출물 ✅
 
@@ -97,6 +97,26 @@
 | `e2e/navigation.spec.ts` | 5 | 페이지 이동 + 인증 가드 |
 | `e2e/workflow.spec.ts` | 9 | 워크플로우 CRUD + 에디터 |
 | `e2e/experiment.spec.ts` | 5 | 실험 페이지 + 모니터링 |
+
+### Phase 6 — UI 다크 테마 리디자인 ✅
+
+| Task | 파일 | 상태 |
+|------|------|------|
+| 1 — Foundation | index.html, quasar.config.ts, src/css/app.css | ✅ |
+| 2 — MainLayout | src/layouts/MainLayout.vue | ✅ |
+| 3 — LoginPage | src/pages/LoginPage.vue | ✅ |
+| 4 — MonitoringPage | src/pages/MonitoringPage.vue | ✅ |
+| 5 — WorkflowList | src/components/workflow/WorkflowList.vue (AG Grid → 네이티브 그룹 리스트) | ✅ |
+| 6 — ExperimentPage | src/pages/ExperimentPage.vue | ✅ |
+| 7 — LogPage | src/pages/LogPage.vue | ✅ |
+| 8 — ResultsPage | src/pages/ResultsPage.vue | ✅ |
+| 9 — AdminPage | src/pages/AdminPage.vue | ✅ |
+| Checkpoint | pnpm build ✅ · e2e 24 passed 1 skipped ✅ | ✅ |
+
+설계 참조: `LAB Pilot v2.html` (Claude Design 생성, Dark Scientific Instrument 테마)
+스크립트·백엔드·e2e 테스트 무변경 원칙 준수.
+
+---
 
 ### Phase 5 — Architecture B (ss_manager ↔ WebSocket pull) ✅
 

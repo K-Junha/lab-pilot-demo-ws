@@ -66,6 +66,6 @@ test.describe('모니터링 페이지', () => {
     await injectAuth(page)
     await mockManagersApi(page)
     await page.goto('/#/')
-    await expect(page.getByText('SiLA Server Monitoring')).toBeVisible()
+    await expect(page.getByText('장치 모니터링')).toBeVisible()
   })
 })
