@@ -1,6 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import type {
-  Workflow, WorkflowStep, StepExecution, ExperimentRun, StepType, DataPoint,
+  Workflow, WorkflowStep, StepExecution, ExperimentRun, DataPoint,
+  FiringData, HeatTreatData,
 } from 'src/components/workflow/types'
 
 const STORAGE_KEY = 'lab-pilot-experiment'
@@ -14,7 +15,7 @@ function noise(base: number, pct = 0.02) {
 /** Generate next simulated data points per step type */
 function simulate(step: StepExecution, ws: WorkflowStep, elapsed: number) {
   const t = elapsed
-  switch (step.type as StepType) {
+  switch (step.type) {
     case 'mixing': {
       const targetRpm = 300
       const rpm = noise(targetRpm, 0.05)
@@ -33,7 +34,8 @@ function simulate(step: StepExecution, ws: WorkflowStep, elapsed: number) {
       break
     }
     case 'firing': {
-      const segs = ws.data?.segments ?? [{ rampRate: 5, temp: 1500, holdMin: 60 }]
+      // switch case가 타입을 보장하므로 안전한 타입 단언
+      const segs = (ws.data as FiringData).segments ?? [{ rampRate: 5, temp: 1500, holdMin: 60 }]
       const targetTemp = computeFiringTarget(segs, elapsed)
       const actual = noise(targetTemp, 0.01)
       push(step, 'temperature', { t, value: +actual.toFixed(1) })
@@ -42,8 +44,8 @@ function simulate(step: StepExecution, ws: WorkflowStep, elapsed: number) {
       break
     }
     case 'heattreat': {
-      const startTemp = ws.data?.temp ?? 600
-      const duration = (ws.data?.duration ?? 60) * 60 // seconds
+      const startTemp = (ws.data as HeatTreatData).temp ?? 600
+      const duration = ((ws.data as HeatTreatData).duration ?? 60) * 60 // seconds
       const progress = Math.min(elapsed / Math.max(duration, 1), 1)
       const temp = startTemp * (1 - progress * 0.9) + 25 * progress * 0.9
       const actual = noise(temp, 0.01)
@@ -104,8 +106,8 @@ function computeFiringTarget(segments: { rampRate: number | null; temp: number |
 
 const currentRun = ref<ExperimentRun | null>(loadRun())
 const activeStepUid = ref<number | null>(currentRun.value?.steps[0]?.uid ?? null)
-let timers: Map<number, ReturnType<typeof setInterval>> = new Map()
-let elapsedTimers: Map<number, ReturnType<typeof setInterval>> = new Map()
+const timers: Map<number, ReturnType<typeof setInterval>> = new Map()
+const elapsedTimers: Map<number, ReturnType<typeof setInterval>> = new Map()
 
 function loadRun(): ExperimentRun | null {
   try {

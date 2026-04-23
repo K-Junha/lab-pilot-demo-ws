@@ -18,7 +18,8 @@
 </template>
 
 <script setup lang="ts">
+import type { FiringData } from '../types'
 import DeviceSelector from '../DeviceSelector.vue'
 
-defineProps<{ data: any }>()
+const data = defineModel<FiringData>('data', { required: true })
 </script>

@@ -52,6 +52,8 @@ import {
   ModuleRegistry,
   AllCommunityModule,
   type RowClickedEvent,
+  type ValueFormatterParams,
+  type ValueGetterParams,
 } from 'ag-grid-community'
 import type { CompositionData } from '../types'
 import { createEmptyComposition } from '../types'
@@ -61,14 +63,14 @@ import { useGridTheme } from '../gridTheme'
 ModuleRegistry.registerModules([AllCommunityModule])
 
 const $q = useQuasar()
-const props = defineProps<{ compositions: CompositionData[] }>()
+const compositions = defineModel<CompositionData[]>('compositions', { required: true })
 
 const editingComp = ref<CompositionData | null>(null)
 const editIndex = ref<number | null>(null)
 
-let compIdSeq = props.compositions.reduce((max, c) => Math.max(max, c.id), 0)
+let compIdSeq = compositions.value.reduce((max, c) => Math.max(max, c.id), 0)
 
-watch(() => props.compositions, (comps) => {
+watch(compositions, (comps) => {
   compIdSeq = comps.reduce((max, c) => Math.max(max, c.id), 0)
 })
 
@@ -77,32 +79,32 @@ const defaultColDef = { flex: 1, resizable: true, sortable: true }
 
 const columnDefs = [
   { field: 'name', headerName: '조성 이름', minWidth: 160 },
-  { field: 'glassType', headerName: '유리 종류', minWidth: 140, valueFormatter: (p: any) => p.value ?? '-' },
+  { field: 'glassType', headerName: '유리 종류', minWidth: 140, valueFormatter: (p: ValueFormatterParams<CompositionData>) => p.value ?? '-' },
   {
     headerName: '산화물',
     minWidth: 200,
-    valueGetter: (p: any) => p.data?.oxides?.map((o: any) => o.oxide).join(', ') || '-',
+    valueGetter: (p: ValueGetterParams<CompositionData>) => p.data?.oxides?.map(o => o.oxide).join(', ') || '-',
   },
   {
     headerName: '총합 (wt%)',
     width: 120,
-    valueGetter: (p: any) => p.data?.oxides?.reduce((s: number, o: any) => s + (Number(o.wt) || 0), 0) ?? 0,
+    valueGetter: (p: ValueGetterParams<CompositionData>) => p.data?.oxides?.reduce((s, o) => s + (Number(o.wt) || 0), 0) ?? 0,
   },
-  { field: 'batchWeight', headerName: '요구량 (g)', width: 120, valueFormatter: (p: any) => p.value ?? '-' },
+  { field: 'batchWeight', headerName: '요구량 (g)', width: 120, valueFormatter: (p: ValueFormatterParams<CompositionData>) => p.value ?? '-' },
 ]
 
 function addComposition() {
   const comp = createEmptyComposition(++compIdSeq)
-  comp.name = `조성 ${props.compositions.length + 1}`
-  props.compositions.push(comp)
+  comp.name = `조성 ${compositions.value.length + 1}`
+  compositions.value.push(comp)
   editingComp.value = comp
-  editIndex.value = props.compositions.length - 1
+  editIndex.value = compositions.value.length - 1
 }
 
 function onRowClicked(event: RowClickedEvent) {
   if (event.rowIndex != null) {
     editIndex.value = event.rowIndex
-    editingComp.value = props.compositions[event.rowIndex]!
+    editingComp.value = compositions.value[event.rowIndex]!
   }
 }
 
@@ -119,7 +121,7 @@ function deleteCurrentComp() {
     cancel: { flat: true, label: '취소' },
     ok: { color: 'negative', label: '삭제' },
   }).onOk(() => {
-    props.compositions.splice(editIndex.value!, 1)
+    compositions.value.splice(editIndex.value!, 1)
     closeEditor()
   })
 }

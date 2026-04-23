@@ -49,8 +49,7 @@ import WorkflowList from 'components/workflow/WorkflowList.vue'
 import WorkflowEditor from 'components/workflow/WorkflowEditor.vue'
 import { useWorkflows } from 'src/composables/useWorkflows'
 import type { Workflow } from 'components/workflow/types'
-
-const API_BASE = 'http://localhost:8000/api'
+import { API_BASE } from 'src/config'
 
 const $q = useQuasar()
 const authStore = useAuthStore()

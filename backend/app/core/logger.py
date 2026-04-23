@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import date
+import shutil
+from datetime import date, timedelta
 from pathlib import Path
 
 _loggers: dict[str, logging.Logger] = {}
@@ -33,6 +34,26 @@ def _make_handler(log_path: str, log_type: str) -> logging.FileHandler:
         )
     )
     return handler
+
+
+def purge_old_logs() -> None:
+    """LOG_KEEP_DAYS보다 오래된 날짜 디렉토리를 삭제한다. 앱 시작 시 호출."""
+    from app.config import settings
+
+    log_root = Path(settings.LOG_PATH)
+    if not log_root.exists():
+        return
+
+    cutoff = date.today() - timedelta(days=settings.LOG_KEEP_DAYS)
+    for entry in log_root.iterdir():
+        if not entry.is_dir():
+            continue
+        try:
+            entry_date = date.fromisoformat(entry.name)
+        except ValueError:
+            continue
+        if entry_date < cutoff:
+            shutil.rmtree(entry, ignore_errors=True)
 
 
 def get_logger(log_type: str) -> logging.Logger:

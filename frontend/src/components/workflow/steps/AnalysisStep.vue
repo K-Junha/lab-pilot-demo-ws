@@ -45,29 +45,27 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { CompositionData, PropertyTarget } from '../types'
+import type { AnalysisData, CompositionData, PropertyTarget } from '../types'
 import DeviceSelector from '../DeviceSelector.vue'
 
-const props = defineProps<{
-  data: any
-  compositions: CompositionData[]
-}>()
+const data = defineModel<AnalysisData>('data', { required: true })
+const props = defineProps<{ compositions: CompositionData[] }>()
 
 const compositionOptions = computed(() =>
   props.compositions.map(c => ({ label: c.name || `조성 #${c.id}`, value: c.id }))
 )
 
 const selectedComp = computed(() =>
-  props.compositions.find(c => c.id === props.data.compositionId) ?? null
+  props.compositions.find(c => c.id === data.value.compositionId) ?? null
 )
 
-if (!props.data.measurements) props.data.measurements = {}
+if (!data.value.measurements) data.value.measurements = {}
 
 function getMeasurement(property: string) {
-  if (!props.data.measurements[property]) {
-    props.data.measurements[property] = { measured: null }
+  if (!data.value.measurements[property]) {
+    data.value.measurements[property] = { measured: null }
   }
-  return props.data.measurements[property]
+  return data.value.measurements[property]
 }
 
 function judgePass(pt: PropertyTarget): boolean | null {

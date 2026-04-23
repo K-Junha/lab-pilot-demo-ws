@@ -1,8 +1,7 @@
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useAuthStore } from 'src/stores/auth'
-
-const API_BASE = 'http://localhost:8000/api'
+import { API_BASE } from 'src/config'
 
 export function useAuth() {
   const authStore = useAuthStore()

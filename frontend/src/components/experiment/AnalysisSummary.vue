@@ -68,11 +68,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { CompositionData, PropertyTarget, StepExecution } from 'src/components/workflow/types'
+import type { AnalysisData, CompositionData, PropertyTarget, StepExecution } from 'src/components/workflow/types'
 
 const props = defineProps<{
   execution: StepExecution
-  stepData: any
+  stepData: AnalysisData
   compositions: CompositionData[]
 }>()
 

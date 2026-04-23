@@ -70,7 +70,26 @@
 </template>
 
 <script setup lang="ts">
-import type { WorkflowStep } from 'src/components/workflow/types'
+import type { StepType } from 'src/components/workflow/types'
 
-defineProps<{ step: WorkflowStep }>()
+/* 표시 전용 — 읽기만 하므로 모든 필드를 optional로 정의 */
+interface StepView {
+  uid: number
+  type: StepType
+  data: {
+    deviceId?: string | null
+    duration?: number | null
+    memo?: string
+    shape?: string
+    R?: number | null
+    T?: number | null
+    W?: number | null
+    H?: number | null
+    segments?: Array<{ rampRate?: number | null; temp?: number | null; holdMin?: number | null }>
+    temp?: number | null
+    method?: string
+  }
+}
+
+defineProps<{ step: StepView }>()
 </script>

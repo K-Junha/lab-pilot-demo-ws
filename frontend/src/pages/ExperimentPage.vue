@@ -153,7 +153,7 @@
                 </div>
                 <WeighingRunner
                   :execution="activeExec"
-                  :step-data="activeWorkflowStep.data"
+                  :step-data="asWeighing(activeWorkflowStep.data)"
                   :compositions="selectedWorkflow!.compositions"
                   :can-start="canStartActiveStep"
                   @start="onStartStep(activeExec.uid)"
@@ -168,7 +168,7 @@
                 </div>
                 <AnalysisSummary
                   :execution="activeExec"
-                  :step-data="activeWorkflowStep.data"
+                  :step-data="asAnalysis(activeWorkflowStep.data)"
                   :compositions="selectedWorkflow!.compositions"
                   @start="onStartStep(activeExec.uid)"
                   @stop="onStopStep(activeExec.uid)"
@@ -208,14 +208,16 @@ import { useWorkflows } from 'src/composables/useWorkflows'
 import { useExperimentRunner } from 'src/composables/useExperimentRunner'
 import { useSilaDevices } from 'src/composables/useSilaDevices'
 import { stepDefs } from 'src/components/workflow/types'
-import type { StepExecStatus, StepType } from 'src/components/workflow/types'
+import type { AnalysisData, StepData, StepExecStatus, StepType, Workflow, WeighingData } from 'src/components/workflow/types'
+
+const asWeighing = (d: StepData) => d as WeighingData
+const asAnalysis = (d: StepData) => d as AnalysisData
 
 import WeighingRunner from 'src/components/experiment/WeighingRunner.vue'
 import AnalysisSummary from 'src/components/experiment/AnalysisSummary.vue'
 import StepRunner from 'src/components/experiment/StepRunner.vue'
 import StepConfigSummary from 'src/components/experiment/StepConfigSummary.vue'
-
-const API_BASE = 'http://localhost:8000/api'
+import { API_BASE } from 'src/config'
 
 const $q = useQuasar()
 const router = useRouter()
@@ -317,7 +319,7 @@ function onStartStep(uid: number) {
   if (ws) startStep(uid, ws)
 }
 
-async function onCompleteExperiment() {
+function onCompleteExperiment() {
   const wf = selectedWorkflow.value
   if (!wf) return
   $q.dialog({
@@ -325,19 +327,21 @@ async function onCompleteExperiment() {
     message: '실험을 완료 처리하시겠습니까? 완료 후에는 수정할 수 없습니다.',
     cancel: { flat: true, label: '취소' },
     ok: { color: 'positive', label: '완료' },
-  }).onOk(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/workflows/${wf.id}/complete`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${authStore.token ?? ''}` },
-      })
-      if (!res.ok) throw new Error()
-      void fetchAll()
-      $q.notify({ type: 'positive', icon: 'celebration', message: '실험이 완료되었습니다!' })
-    } catch {
-      $q.notify({ type: 'negative', message: '실험 완료 처리 실패' })
-    }
-  })
+  }).onOk(() => { void _execComplete(wf) })
+}
+
+async function _execComplete(wf: Workflow) {
+  try {
+    const res = await fetch(`${API_BASE}/workflows/${wf.id}/complete`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${authStore.token ?? ''}` },
+    })
+    if (!res.ok) throw new Error()
+    void fetchAll()
+    $q.notify({ type: 'positive', icon: 'celebration', message: '실험이 완료되었습니다!' })
+  } catch {
+    $q.notify({ type: 'negative', message: '실험 완료 처리 실패' })
+  }
 }
 
 function onStopStep(uid: number) {

@@ -27,7 +27,7 @@
         <!-- Workflow rows -->
         <div class="lp-wf-rows">
           <div
-            v-for="(wf, idx) in group.items"
+            v-for="wf in group.items"
             :key="wf.id"
             class="lp-wf-row"
             :style="{ borderLeftColor: group.color }"

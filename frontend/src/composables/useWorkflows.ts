@@ -2,8 +2,7 @@ import { ref } from 'vue'
 import { useQuasar } from 'quasar'
 import type { Workflow } from 'components/workflow/types'
 import { useAuthStore } from 'src/stores/auth'
-
-const API_BASE = 'http://localhost:8000/api'
+import { API_BASE } from 'src/config'
 
 const workflows = ref<Workflow[]>([])
 

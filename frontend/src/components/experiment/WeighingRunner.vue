@@ -67,7 +67,7 @@
               </q-item-section>
             </q-item>
           </template>
-          <template #selected-item="scope">
+          <template #selected-item>
             <div class="row items-center no-wrap q-gutter-xs">
               <q-icon
                 :name="isCompComplete(activeComp!) ? 'check_circle' : hasCompAnyRecord(activeComp!) ? 'hourglass_top' : 'radio_button_unchecked'"
@@ -255,16 +255,16 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useBalanceWs } from 'src/composables/useBalanceWs'
-import type { CompositionData, CompositionRow, StepExecution } from 'src/components/workflow/types'
+import type { CompositionData, CompositionRow, StepExecution, WeighingData } from 'src/components/workflow/types'
 
+const stepData = defineModel<WeighingData>('stepData', { required: true })
 const props = defineProps<{
   execution: StepExecution
-  stepData: any
   compositions: CompositionData[]
   canStart?: boolean
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   start: []
   stop: []
 }>()
@@ -283,7 +283,7 @@ onMounted(() => { connectBalance() })
 onUnmounted(() => disconnectBalance())
 
 // ── rows 초기화 보장 (중첩 구조: { [compId]: { [oxide]: { actualG } } }) ──
-if (!props.stepData.rows) props.stepData.rows = {}
+if (!stepData.value.rows) stepData.value.rows = {}
 
 // ── 조성 선택 ──────────────────────────────────────────
 const activeCompId = ref<number>(props.compositions[0]?.id ?? 0)
@@ -306,7 +306,7 @@ const compOptions = computed(() =>
     const done = isCompComplete(comp)
     const partial = hasCompAnyRecord(comp)
     const recorded = comp.oxides.filter(ox => {
-      const rows = props.stepData.rows?.[comp.id]
+      const rows = stepData.value.rows?.[comp.id]
       return rows?.[ox.oxide]?.actualG != null
     }).length
     return {
@@ -322,7 +322,7 @@ const compOptions = computed(() =>
 const activeCompProgress = computed(() => {
   const comp = activeComp.value
   if (!comp || comp.oxides.length === 0) return '진행률: 0%'
-  const rows = props.stepData.rows?.[comp.id]
+  const rows = stepData.value.rows?.[comp.id]
   if (!rows) return '진행률: 0%'
   const recorded = comp.oxides.filter(ox => rows[ox.oxide]?.actualG != null).length
   return `진행률: ${Math.round((recorded / comp.oxides.length) * 100)}%`
@@ -330,8 +330,8 @@ const activeCompProgress = computed(() => {
 
 // 조성별 rows 접근 헬퍼
 function compRows(compId: number) {
-  if (!props.stepData.rows[compId]) props.stepData.rows[compId] = {}
-  return props.stepData.rows[compId]
+  if (!stepData.value.rows[compId]) stepData.value.rows[compId] = {}
+  return stepData.value.rows[compId]
 }
 
 function getRow(oxide: string) {
@@ -342,13 +342,13 @@ function getRow(oxide: string) {
 
 // ── 조성별 완료 상태 ───────────────────────────────────
 function isCompComplete(comp: CompositionData): boolean {
-  const rows = props.stepData.rows?.[comp.id]
+  const rows = stepData.value.rows?.[comp.id]
   if (!rows) return false
   return comp.oxides.length > 0 && comp.oxides.every(ox => rows[ox.oxide]?.actualG != null)
 }
 
 function hasCompAnyRecord(comp: CompositionData): boolean {
-  const rows = props.stepData.rows?.[comp.id]
+  const rows = stepData.value.rows?.[comp.id]
   if (!rows) return false
   return comp.oxides.some(ox => rows[ox.oxide]?.actualG != null)
 }
@@ -527,7 +527,7 @@ function chipColor(ox: CompositionRow): string {
 // ── 합계 ───────────────────────────────────────────────
 const totalActualG = computed(() => {
   if (!activeComp.value) return '-'
-  const vals = activeComp.value.oxides.map(ox => rowActualG(ox)).filter(v => v != null) as number[]
+  const vals = activeComp.value.oxides.map(ox => rowActualG(ox)).filter(v => v != null)
   if (vals.length === 0) return '-'
   return vals.reduce((a, b) => a + b, 0).toFixed(3)
 })
@@ -539,7 +539,7 @@ const totalErrorG = computed(() => {
     const a = rowActualG(ox)
     const t = targetGNum(activeComp.value!, ox)
     return a != null && t != null ? a - t : null
-  }).filter(v => v != null) as number[]
+  }).filter(v => v != null)
   if (errors.length === 0) return '-'
   const sum = errors.reduce((a, b) => a + b, 0)
   return (sum >= 0 ? '+' : '') + sum.toFixed(3)

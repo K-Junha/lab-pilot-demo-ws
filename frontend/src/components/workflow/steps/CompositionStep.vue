@@ -89,7 +89,6 @@
               :rowData="data.oxides"
               :columnDefs="columnDefs"
               :defaultColDef="defaultColDef"
-              @grid-ready="onGridReady"
               @cell-value-changed="onCellValueChanged"
             />
             <div
@@ -202,15 +201,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
-import { useMaterials, type OxideInfo } from '../../../composables/useMaterials'
+import { useMaterials } from '../../../composables/useMaterials'
 import {
   ModuleRegistry,
   AllCommunityModule,
   type GridApi,
   type GridReadyEvent,
   type CellValueChangedEvent,
+  type ValueGetterParams,
+  type ICellRendererParams,
+  type EditableCallbackParams,
+  type CellClassParams,
+  type ValueParserParams,
 } from 'ag-grid-community'
 import { useGridTheme } from '../gridTheme'
 
@@ -238,7 +242,7 @@ export interface CompositionData {
   propertyTargets: PropertyTarget[]
 }
 
-const props = defineProps<{ data: CompositionData }>()
+const data = defineModel<CompositionData>('data', { required: true })
 
 /* ===== UI State ===== */
 const section2Open = ref(true)
@@ -271,7 +275,7 @@ const CATEGORY_MAP: Record<string, { label: string; color: string }> = {
 function categoryColor(cat: string) { return CATEGORY_MAP[cat]?.color ?? 'grey' }
 
 const oxideOptions = computed<OxideOption[]>(() => {
-  const existing = new Set(props.data.oxides.map(o => o.oxide))
+  const existing = new Set(data.value.oxides.map(o => o.oxide))
   return allOxides.value
     .filter(o => !existing.has(o.formula))
     .map(o => ({
@@ -330,8 +334,8 @@ const propertyUnits: Record<string, string> = {
 }
 
 /* ===== Property targets sync ===== */
-watch(() => props.data.selectedProperties, (newProps) => {
-  const existing = props.data.propertyTargets
+watch(() => data.value.selectedProperties, (newProps) => {
+  const existing = data.value.propertyTargets
   const kept = existing.filter((r) => newProps.includes(r.property))
   const keptNames = new Set(kept.map((r) => r.property))
   const added = newProps
@@ -344,42 +348,42 @@ watch(() => props.data.selectedProperties, (newProps) => {
       min: null,
       max: null,
     }))
-  props.data.propertyTargets = [...kept, ...added]
+  data.value.propertyTargets = [...kept, ...added]
 }, { immediate: true, deep: true })
 
 /* ===== Property Grid ===== */
 const propColumnDefs = [
   { headerName: '', width: 50, rowDrag: true, sortable: false, filter: false, suppressHeaderMenuButton: true },
-  { headerName: '우선순위', width: 100, editable: false, valueGetter: (params: any) => params.node ? params.node.rowIndex + 1 : '' },
+  { headerName: '우선순위', width: 100, editable: false, valueGetter: (params: ValueGetterParams<PropertyTarget>) => params.node?.rowIndex != null ? params.node.rowIndex + 1 : '' },
   { field: 'property', headerName: '물성', editable: false, width: 140 },
   { field: 'unit', headerName: '단위', editable: false, width: 120 },
   {
     field: 'mode', headerName: '모드', editable: true, cellEditor: 'agSelectCellEditor',
     cellEditorParams: { values: ['단일값', '범위', '최솟값', '최댓값'] },
     singleClickEdit: true,
-    cellRenderer: (params: any) => `<div style="display:flex;align-items:center;justify-content:space-between;width:100%;cursor:pointer;"><span>${params.value ?? ''}</span><span style="font-size:10px;color:#888;">▼</span></div>`,
+    cellRenderer: (params: ICellRendererParams<PropertyTarget>) => `<div style="display:flex;align-items:center;justify-content:space-between;width:100%;cursor:pointer;"><span>${params.value ?? ''}</span><span style="font-size:10px;color:#888;">▼</span></div>`,
     width: 110,
   },
   {
     field: 'target', headerName: '목표값',
-    editable: (params: any) => params.data.mode === '단일값',
-    cellStyle: (params: any) => params.data.mode !== '단일값' ? { display: 'none' } : {},
-    cellRenderer: (params: any) => params.data.mode === '단일값' ? (params.value ?? '') : '',
-    valueParser: (p: any) => p.newValue === '' ? null : Number(p.newValue),
+    editable: (params: EditableCallbackParams<PropertyTarget>) => params.data?.mode === '단일값',
+    cellStyle: (params: CellClassParams<PropertyTarget>) => params.data?.mode !== '단일값' ? { display: 'none' } : {},
+    cellRenderer: (params: ICellRendererParams<PropertyTarget>) => params.data?.mode === '단일값' ? (params.value ?? '') : '',
+    valueParser: (p: ValueParserParams<PropertyTarget>) => p.newValue === '' ? null : Number(p.newValue),
   },
   {
     field: 'min', headerName: '최소',
-    editable: (params: any) => params.data.mode === '범위',
-    cellStyle: (params: any) => params.data.mode !== '범위' ? { display: 'none' } : {},
-    cellRenderer: (params: any) => params.data.mode === '범위' ? (params.value ?? '') : '',
-    valueParser: (p: any) => p.newValue === '' ? null : Number(p.newValue),
+    editable: (params: EditableCallbackParams<PropertyTarget>) => params.data?.mode === '범위',
+    cellStyle: (params: CellClassParams<PropertyTarget>) => params.data?.mode !== '범위' ? { display: 'none' } : {},
+    cellRenderer: (params: ICellRendererParams<PropertyTarget>) => params.data?.mode === '범위' ? (params.value ?? '') : '',
+    valueParser: (p: ValueParserParams<PropertyTarget>) => p.newValue === '' ? null : Number(p.newValue),
   },
   {
     field: 'max', headerName: '최대',
-    editable: (params: any) => params.data.mode === '범위',
-    cellStyle: (params: any) => params.data.mode !== '범위' ? { display: 'none' } : {},
-    cellRenderer: (params: any) => params.data.mode === '범위' ? (params.value ?? '') : '',
-    valueParser: (p: any) => p.newValue === '' ? null : Number(p.newValue),
+    editable: (params: EditableCallbackParams<PropertyTarget>) => params.data?.mode === '범위',
+    cellStyle: (params: CellClassParams<PropertyTarget>) => params.data?.mode !== '범위' ? { display: 'none' } : {},
+    cellRenderer: (params: ICellRendererParams<PropertyTarget>) => params.data?.mode === '범위' ? (params.value ?? '') : '',
+    valueParser: (p: ValueParserParams<PropertyTarget>) => p.newValue === '' ? null : Number(p.newValue),
   },
 ]
 
@@ -394,7 +398,7 @@ function onPropCellChanged(event: CellValueChangedEvent) {
   else if (d.mode === '최솟값') { d.target = null; d.min = null; d.max = null }
   else if (d.mode === '최댓값') { d.target = null; d.min = null; d.max = null }
   const idx = event.rowIndex
-  if (idx != null) props.data.propertyTargets[idx] = { ...d }
+  if (idx != null) data.value.propertyTargets[idx] = { ...d }
   propGridApi?.refreshCells({ force: true })
 }
 
@@ -402,7 +406,7 @@ function onPropRowDragEnd() {
   if (!propGridApi) return
   const newOrder: PropertyTarget[] = []
   propGridApi.forEachNode((node) => { if (node.data) newOrder.push(node.data) })
-  props.data.propertyTargets.splice(0, props.data.propertyTargets.length, ...newOrder)
+  data.value.propertyTargets.splice(0, data.value.propertyTargets.length, ...newOrder)
   propGridApi.refreshCells({ force: true })
 }
 
@@ -429,19 +433,16 @@ const chalcoOptions: { label: string; oxides: CompositionRow[] }[] = [
 const { gridTheme } = useGridTheme()
 const columnDefs = [
   { field: 'oxide', headerName: '산화물' },
-  { field: 'wt', headerName: 'wt (%)', editable: true, valueParser: (p: any) => Number(p.newValue) },
+  { field: 'wt', headerName: 'wt (%)', editable: true, valueParser: (p: ValueParserParams<CompositionRow>) => Number(p.newValue) },
 ]
 const defaultColDef = { flex: 1, resizable: true }
 
-let gridApi: GridApi | null = null
-const totalWt = computed(() => props.data.oxides.reduce((sum, r) => sum + (Number(r.wt) || 0), 0))
-
-function onGridReady(params: GridReadyEvent) { gridApi = params.api }
+const totalWt = computed(() => data.value.oxides.reduce((sum, r) => sum + (Number(r.wt) || 0), 0))
 
 function onCellValueChanged(event: CellValueChangedEvent) {
   const idx = event.rowIndex
   if (idx == null) return
-  props.data.oxides[idx] = { ...event.data }
+  data.value.oxides[idx] = { ...event.data }
 }
 
 /* ===== Dialogs ===== */
@@ -455,19 +456,19 @@ function onGlassClick(g: GlassType) {
 
 function confirmGlass(label: string, oxides: CompositionRow[]) {
   if (!tempWeight.value || tempWeight.value <= 0) { alert('요구량을 입력하세요'); return }
-  props.data.glassType = label
-  props.data.batchWeight = tempWeight.value
+  data.value.glassType = label
+  data.value.batchWeight = tempWeight.value
   glassDialog.value = false
   chalcoDialog.value = false
-  props.data.oxides.splice(0, props.data.oxides.length, ...oxides.map((r) => ({ ...r })))
+  data.value.oxides.splice(0, data.value.oxides.length, ...oxides.map((r) => ({ ...r })))
 }
 
 function doAddOxide() {
   if (!selectedOxide.value) return
-  props.data.oxides.push({ oxide: selectedOxide.value, wt: 0 })
+  data.value.oxides.push({ oxide: selectedOxide.value, wt: 0 })
   selectedOxide.value = null
   addOxideDialog.value = false
 }
 
-function recommendComposition() { console.log('추천 요청:', props.data.oxides) }
+function recommendComposition() { console.log('추천 요청:', data.value.oxides) }
 </script>

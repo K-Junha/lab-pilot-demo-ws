@@ -1,7 +1,8 @@
 import { ref } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
+import { WS_BASE } from 'src/config'
 
-const BACKEND_WS_URL = 'ws://localhost:8000/api/ws/balance'
+const BACKEND_WS_URL = `${WS_BASE}/api/ws/balance`
 
 const weight = ref<number>(0)
 const connected = ref(false)

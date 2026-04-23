@@ -15,7 +15,8 @@
 </template>
 
 <script setup lang="ts">
+import type { MixingData } from '../types'
 import DeviceSelector from '../DeviceSelector.vue'
 
-defineProps<{ data: any }>()
+const data = defineModel<MixingData>('data', { required: true })
 </script>

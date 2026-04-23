@@ -39,13 +39,11 @@
 </template>
 
 <script setup lang="ts">
-import type { CompositionData } from '../types'
+import type { CompositionData, WeighingData } from '../types'
 import DeviceSelector from '../DeviceSelector.vue'
 
-const props = defineProps<{
-  data: any
-  compositions: CompositionData[]
-}>()
+const data = defineModel<WeighingData>('data', { required: true })
+defineProps<{ compositions: CompositionData[] }>()
 
 function calcTargetG(comp: CompositionData, oxide: { oxide: string; wt: number }) {
   if (!comp.batchWeight) return '-'

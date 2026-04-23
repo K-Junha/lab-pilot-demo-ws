@@ -1,8 +1,7 @@
 import { ref, computed } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
 import type { SilaManager, SilaServer } from 'src/components/workflow/types'
-
-const API_BASE = 'http://localhost:8000/api'
+import { API_BASE } from 'src/config'
 
 /* /api/managers 응답 타입 */
 interface DeviceFromApi {

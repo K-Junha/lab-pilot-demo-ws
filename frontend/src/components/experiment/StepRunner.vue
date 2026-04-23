@@ -81,7 +81,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js'
-import type { StepExecution, StepType } from 'src/components/workflow/types'
+import type { StepExecution } from 'src/components/workflow/types'
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend, Filler)
 
@@ -150,7 +150,7 @@ const chartColors: Record<string, string> = {
 const chartData = computed(() => {
   const labels = (props.execution.series['temperature'] ?? []).map(p => p.t)
   const datasets = Object.entries(metricLabels.value).map(([key, label]) => ({
-    label: label as string,
+    label: label,
     data: (props.execution.series[key] ?? []).map(p => p.value),
     borderColor: chartColors[key] ?? '#4caf50',
     backgroundColor: 'transparent',

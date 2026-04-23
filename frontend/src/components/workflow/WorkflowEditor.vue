@@ -63,13 +63,13 @@
         :key="step.uid"
         :name="step.uid"
       >
-        <WeighingStep v-if="step.type === 'weighing'" :data="step.data" :compositions="workflow.compositions" />
-        <MixingStep v-else-if="step.type === 'mixing'" :data="step.data" />
-        <FormingStep v-else-if="step.type === 'forming'" :data="step.data" />
-        <FiringStep v-else-if="step.type === 'firing'" :data="step.data" />
-        <HeatTreatStep v-else-if="step.type === 'heattreat'" :data="step.data" />
-        <MachiningStep v-else-if="step.type === 'machining'" :data="step.data" />
-        <AnalysisStep v-else-if="step.type === 'analysis'" :data="step.data" :compositions="workflow.compositions" />
+        <WeighingStep v-if="step.type === 'weighing'" :data="asWeighing(step.data)" :compositions="workflow.compositions" />
+        <MixingStep v-else-if="step.type === 'mixing'" :data="asMixing(step.data)" />
+        <FormingStep v-else-if="step.type === 'forming'" :data="asForming(step.data)" />
+        <FiringStep v-else-if="step.type === 'firing'" :data="asFiring(step.data)" />
+        <HeatTreatStep v-else-if="step.type === 'heattreat'" :data="asHeatTreat(step.data)" />
+        <MachiningStep v-else-if="step.type === 'machining'" :data="asMachining(step.data)" />
+        <AnalysisStep v-else-if="step.type === 'analysis'" :data="asAnalysis(step.data)" :compositions="workflow.compositions" />
       </q-tab-panel>
     </q-tab-panels>
 
@@ -120,12 +120,29 @@ import {
   type Workflow,
   type WorkflowStep,
   type StepType,
+  type WeighingData,
+  type MixingData,
+  type FormingData,
+  type FiringData,
+  type HeatTreatData,
+  type MachiningData,
+  type AnalysisData,
+  type StepData,
 } from './types'
+
+// StepData 유니언을 각 스텝별 구체 타입으로 캐스팅 — 템플릿에서 v-if로 타입이 보장된 상황에서만 사용
+const asWeighing = (d: StepData) => d as WeighingData
+const asMixing = (d: StepData) => d as MixingData
+const asForming = (d: StepData) => d as FormingData
+const asFiring = (d: StepData) => d as FiringData
+const asHeatTreat = (d: StepData) => d as HeatTreatData
+const asMachining = (d: StepData) => d as MachiningData
+const asAnalysis = (d: StepData) => d as AnalysisData
 
 const stepDefList = Object.values(allStepDefs)
 const $q = useQuasar()
 
-const props = defineProps<{ workflow: Workflow }>()
+const workflow = defineModel<Workflow>('workflow', { required: true })
 const emit = defineEmits<{
   back: []
   save: []
@@ -134,7 +151,7 @@ const emit = defineEmits<{
 const activeTab = ref<string | number>('compositions')
 const addStepDialog = ref(false)
 
-let uidSeq = Math.max(Date.now(), ...props.workflow.steps.map(s => s.uid), 0)
+let uidSeq = Math.max(Date.now(), ...workflow.value.steps.map(s => s.uid), 0)
 
 function addStep(type: StepType) {
   const newStep: WorkflowStep = {
@@ -142,7 +159,7 @@ function addStep(type: StepType) {
     type,
     data: createStepData(type),
   }
-  props.workflow.steps.push(newStep)
+  workflow.value.steps.push(newStep)
   activeTab.value = newStep.uid
   addStepDialog.value = false
 }
@@ -154,10 +171,10 @@ function removeStep(idx: number) {
     cancel: { flat: true, label: '취소' },
     ok: { color: 'negative', label: '삭제' },
   }).onOk(() => {
-    const removed = props.workflow.steps.splice(idx, 1)[0]
+    const removed = workflow.value.steps.splice(idx, 1)[0]
     if (activeTab.value === removed?.uid) {
-      activeTab.value = props.workflow.steps.length > 0
-        ? props.workflow.steps[Math.min(idx, props.workflow.steps.length - 1)]!.uid
+      activeTab.value = workflow.value.steps.length > 0
+        ? workflow.value.steps[Math.min(idx, workflow.value.steps.length - 1)]!.uid
         : 'compositions'
     }
   })

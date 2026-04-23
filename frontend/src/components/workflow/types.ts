@@ -50,10 +50,56 @@ export interface StepDef {
   color: string
 }
 
+/* ── 각 스텝별 data 타입 — WorkflowStep.data가 이 중 하나 ── */
+
+export interface WeighingRowEntry { actualG: number | null }
+export interface WeighingData {
+  deviceId: string | null
+  // compId → 산화물키 → 실측량 엔트리 (중첩 Record)
+  rows: Record<string | number, Record<string, WeighingRowEntry>>
+}
+
+export interface MixingData {
+  deviceId: string | null
+  duration: number | null
+  memo: string
+}
+
+export type ShapeType = '원형' | '바형'
+export interface FormingData {
+  deviceId: string | null; shape: ShapeType
+  R: number | null; T: number | null; W: number | null; H: number | null
+}
+
+export interface FiringSegment { rampRate: number | null; temp: number | null; holdMin: number | null }
+export interface FiringData { deviceId: string | null; segments: FiringSegment[] }
+
+export interface HeatTreatData {
+  deviceId: string | null
+  temp: number | null; duration: number | null; method: string; memo: string
+}
+
+export interface MachiningData {
+  deviceId: string | null; shape: ShapeType
+  R: number | null; T: number | null; W: number | null; H: number | null
+}
+
+export interface AnalysisMeasurement { measured: number | null; unit?: string }
+export interface AnalysisData {
+  deviceId: string | null
+  compositionId: number | null
+  measurements: Record<string, AnalysisMeasurement>
+}
+
+// 모든 공정 스텝 데이터의 유니언 타입 — WorkflowStep.data의 실제 타입
+export type StepData =
+  | WeighingData | MixingData | FormingData | FiringData
+  | HeatTreatData | MachiningData | AnalysisData
+
 export interface WorkflowStep {
   uid: number
   type: StepType
-  data: any
+  data: StepData
 }
 
 export interface Workflow {
@@ -75,10 +121,10 @@ export const stepDefs: Record<StepType, StepDef> = {
   analysis:  { key: 'analysis',  label: '측정/분석', desc: '목표 특성 측정 및 판정',               icon: 'science',                color: 'green' },
 }
 
-export function createStepData(type: StepType): any {
+export function createStepData(type: StepType): StepData {
   switch (type) {
     case 'weighing':
-      return { deviceId: null, rows: {} }
+      return { deviceId: null, rows: {} } as WeighingData
     case 'mixing':
       return { deviceId: null, duration: null, memo: '' }
     case 'forming':
@@ -124,7 +170,7 @@ export interface StepExecution {
   completedAt: string | null
   elapsed: number    // seconds
   series: Record<string, DataPoint[]>   // e.g. { temperature: [...], pressure: [...] }
-  result: any        // step-specific result summary
+  result: Record<string, unknown> | null
 }
 
 export interface ExperimentRun {

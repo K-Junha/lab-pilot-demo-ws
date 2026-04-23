@@ -15,7 +15,8 @@
 </template>
 
 <script setup lang="ts">
+import type { HeatTreatData } from '../types'
 import DeviceSelector from '../DeviceSelector.vue'
 
-defineProps<{ data: any }>()
+const data = defineModel<HeatTreatData>('data', { required: true })
 </script>

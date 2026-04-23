@@ -21,7 +21,8 @@
 </template>
 
 <script setup lang="ts">
+import type { MachiningData } from '../types'
 import DeviceSelector from '../DeviceSelector.vue'
 
-defineProps<{ data: any }>()
+const data = defineModel<MachiningData>('data', { required: true })
 </script>

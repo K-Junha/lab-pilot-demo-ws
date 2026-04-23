@@ -41,11 +41,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { CompositionData, CompositionRow } from 'src/components/workflow/types'
+import type { CompositionData, CompositionRow, WeighingData } from 'src/components/workflow/types'
 
 const props = defineProps<{
-  stepData: any
+  stepData: WeighingData
   compositions: CompositionData[]
 }>()
 

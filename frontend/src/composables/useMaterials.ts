@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { API_BASE } from 'src/config'
 
 export interface OxideInfo {
   formula: string
@@ -6,8 +7,6 @@ export interface OxideInfo {
   molar_mass: number
   category: string
 }
-
-const BACKEND_URL = 'http://localhost:8000'
 
 const oxideCache = ref<OxideInfo[]>([])
 const loading = ref(false)
@@ -18,7 +17,7 @@ export function useMaterials() {
 
     loading.value = true
     try {
-      const res = await fetch(`${BACKEND_URL}/api/materials/oxides`)
+      const res = await fetch(`${API_BASE}/materials/oxides`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       oxideCache.value = await res.json()
       return oxideCache.value

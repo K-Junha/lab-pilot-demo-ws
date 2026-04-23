@@ -11,7 +11,7 @@ from app.config import settings
 from app.core.logger import get_logger
 
 router = APIRouter(tags=["ws"])
-logger = get_logger("system")
+logger = get_logger("device")
 
 AUTH_TIMEOUT = 5.0       # JWT 첫 메시지 대기 타임아웃 (sec)
 POLL_INTERVAL = 0.5      # 캐시 폴링 간격 (sec)

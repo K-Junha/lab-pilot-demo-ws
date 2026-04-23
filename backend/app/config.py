@@ -19,12 +19,17 @@ class Settings(BaseSettings):
 
     # CORS
     ALLOWED_ORIGINS: list[str] = [
+        "http://localhost:9000",
+        "http://localhost:9001",
         "http://localhost:9002",
+        "http://localhost:5173",
     ]
 
     # 파일 경로
     UPLOAD_PATH: str = "./uploads"
     LOG_PATH: str = "./logs"
+    LOG_KEEP_DAYS: int = 30   # 로그 보관 기간 (일)
+    LOG_DEBUG: bool = False   # DEBUG 레벨 로그 활성화 여부
 
     # ss_manager 인증 키
     MANAGER_API_KEY: str = ""

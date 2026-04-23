@@ -162,8 +162,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
 import { useWorkflows } from 'src/composables/useWorkflows'
-
-const API_BASE = 'http://localhost:8000/api'
+import { API_BASE } from 'src/config'
 
 interface LogRow {
   log_id: number

@@ -21,7 +21,8 @@
 </template>
 
 <script setup lang="ts">
+import type { FormingData } from '../types'
 import DeviceSelector from '../DeviceSelector.vue'
 
-defineProps<{ data: any }>()
+const data = defineModel<FormingData>('data', { required: true })
 </script>

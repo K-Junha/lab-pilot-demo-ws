@@ -29,6 +29,6 @@ function buildGridTheme(theme: ThemeDef) {
 
 export function useGridTheme() {
   const { currentTheme } = useTheme()
-  const gridTheme = computed(() => buildGridTheme(currentTheme.value!))
+  const gridTheme = computed(() => buildGridTheme(currentTheme.value))
   return { gridTheme }
 }

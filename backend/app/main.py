@@ -24,10 +24,12 @@ from app.api.devices import router as devices_router, _executor as devices_execu
 from app.api.materials import router as materials_router
 from app.api.ws import router as ws_router
 from app.api.ws_manager_client import start_all as start_manager_clients, stop_all as stop_manager_clients
+from app.core.logger import purge_old_logs
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    purge_old_logs()
     await start_watchdog()
     await start_manager_clients()
     yield

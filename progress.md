@@ -1,10 +1,72 @@
 # LAB PILOT — Progress
 
-> 최종 업데이트: 2026-04-20
+> 최종 업데이트: 2026-04-23
 
 ---
 
-## 현재 단계: Phase 6 완료 (UI 다크 테마 리디자인) — 전체 완료
+## 현재 단계: device_simulator SPEC 완료 — plan 대기 중
+
+### device_simulator — 가상 장치 시뮬레이터 (2026-04-23)
+
+| 항목 | 상태 | 날짜 |
+|------|------|------|
+| VIRTUAL_SIMULATION_PLAN.md 검토 및 방향 재정립 | ✅ 완료 | 2026-04-23 |
+| device_simulator/SPEC.md 작성 | ✅ 완료 | 2026-04-23 |
+| tasks/plan.md 작성 | ⬜ 대기 | — |
+| 구현 | ⬜ 대기 | — |
+
+---
+
+## 이전 단계: Phase 7 완료 — pnpm lint 0 errors, 빌드 성공
+
+### Phase 7 — 코드 품질 & 로깅 규칙화 (2026-04-22 완료)
+
+| 항목 | 상태 | 날짜 |
+|------|------|------|
+| tasks/plan.md Phase 7 섹션 추가 | ✅ 완료 | 2026-04-22 |
+| tasks/todo.md Phase 7 항목 추가 | ✅ 완료 | 2026-04-22 |
+| T7.1 logging-rules.md + .env 보완 | ✅ 완료 | 2026-04-22 |
+| T7.2 Lint 안전 수정 (98→47 errors) | ✅ 완료 | 2026-04-22 |
+| T7.3 Lint vue/no-mutating-props → 0 errors (defineModel) | ✅ 완료 | 2026-04-22 |
+| T7.4 백엔드 로그 타입 정렬 + purge_old_logs() | ✅ 완료 | 2026-04-22 |
+| T7.5 한국어 주석 (프론트엔드) | ✅ 완료 | 2026-04-22 |
+| T7.6 한국어 주석 (백엔드) | ✅ 완료 | 2026-04-22 |
+
+---
+
+## 현재 단계 이전: 전체 완료 — lab-pilot Phase 1~6 + ss_manager GUI 앱 커밋 완료
+
+### ss_manager GUI App (신규 — 2026-04-21~)
+
+| 항목 | 상태 | 날짜 |
+|------|------|------|
+| SPEC.md 작성 (6개 영역) | ✅ 완료 | 2026-04-21 |
+| tasks/plan.md + todo.md 작성 (9개 태스크) | ✅ 완료 | 2026-04-21 |
+| Task 1 — 프로젝트 구조 초기화 | ✅ 완료 | 2026-04-21 |
+| Task 2 — device_registry.py | ✅ 완료 | 2026-04-21 |
+| Task 3 — clients/base.py + generic.py | ✅ 완료 | 2026-04-21 |
+| Task 4 — clients/balance.py | ✅ 완료 | 2026-04-21 |
+| Task 5 — ws_server.py | ✅ 완료 | 2026-04-21 |
+| Task 6 — core/main.py (FastAPI) | ✅ 완료 | 2026-04-21 |
+| Task 7 — Electron shell | ✅ 완료 | 2026-04-21 |
+| Task 8 — Vue/Quasar UI | ✅ 완료 | 2026-04-21 |
+| Task 9 — 테스트 + 통합 검증 | ✅ 완료 | 2026-04-21 |
+| /test — pytest 31 passed + e2e 24 passed | ✅ 완료 | 2026-04-21 |
+| /review — Important 4건 + Suggestion 4건 식별 | ✅ 완료 | 2026-04-21 |
+| /review Fix 적용 (I-1~I-4) | ✅ 완료 | 2026-04-22 |
+
+#### /review Fix 목록 (내일 작업)
+
+| Fix | 파일 | 내용 |
+|-----|------|------|
+| I-1 | `gui/src/pages/SettingsPage.vue:71` | 개인 경로 하드코딩 제거 |
+| I-2 | `core/clients/balance.py:57-59` | `stop()` thread join 추가 |
+| I-3 | `gui/src/pages/DevicesPage.vue:209,225` | submitAdd/doDelete 실패 Quasar notify 추가 |
+| I-4 | `DevicesPage.vue:187`, `MonitorPage.vue:107` | unmount 후 WS 재연결 방지 (`destroyed` 플래그) |
+
+---
+
+## Phase 4 완료 · Phase 5 완료 — lab-pilot UI 리디자인
 
 ### 플랜 산출물 ✅
 
@@ -98,26 +160,6 @@
 | `e2e/workflow.spec.ts` | 9 | 워크플로우 CRUD + 에디터 |
 | `e2e/experiment.spec.ts` | 5 | 실험 페이지 + 모니터링 |
 
-### Phase 6 — UI 다크 테마 리디자인 ✅
-
-| Task | 파일 | 상태 |
-|------|------|------|
-| 1 — Foundation | index.html, quasar.config.ts, src/css/app.css | ✅ |
-| 2 — MainLayout | src/layouts/MainLayout.vue | ✅ |
-| 3 — LoginPage | src/pages/LoginPage.vue | ✅ |
-| 4 — MonitoringPage | src/pages/MonitoringPage.vue | ✅ |
-| 5 — WorkflowList | src/components/workflow/WorkflowList.vue (AG Grid → 네이티브 그룹 리스트) | ✅ |
-| 6 — ExperimentPage | src/pages/ExperimentPage.vue | ✅ |
-| 7 — LogPage | src/pages/LogPage.vue | ✅ |
-| 8 — ResultsPage | src/pages/ResultsPage.vue | ✅ |
-| 9 — AdminPage | src/pages/AdminPage.vue | ✅ |
-| Checkpoint | pnpm build ✅ · e2e 24 passed 1 skipped ✅ | ✅ |
-
-설계 참조: `LAB Pilot v2.html` (Claude Design 생성, Dark Scientific Instrument 테마)
-스크립트·백엔드·e2e 테스트 무변경 원칙 준수.
-
----
-
 ### Phase 5 — Architecture B (ss_manager ↔ WebSocket pull) ✅
 
 | ID | 항목 | 상태 |
@@ -142,6 +184,16 @@
 | mat_nav_lib | `pip install -e ../../mat_nav_lib` 별도 설치 필요 |
 | bcrypt | `pip install "bcrypt>=3.2.0,<4.1.0"` 버전 고정 필요 |
 
+## 버그픽스 이력 (2026-04-22 추가)
+
+| 항목 | 해결 방법 |
+|------|-----------|
+| IP 접근 시 CORS 차단 | `.env` `ALLOWED_ORIGINS`에 `192.168.1.103:9000~9002` 추가 |
+| 프론트엔드 API URL 하드코딩 | `frontend/.env` + `VITE_API_BASE_URL` / `VITE_WS_BASE_URL` 환경변수 도입, 9개 파일 교체 |
+| Quasar 포트 미명시 | `quasar.config.ts` devServer `port: 9000` 추가 |
+| `config.py` CORS 기본값 9002만 허용 | 9000~9002, 5173 포함으로 수정 |
+| `start-all.bat` 포트 주석 오기 | `:9002` → `:9000` 수정 |
+
 ## 버그픽스 이력 (2026-04-14)
 
 | 항목 | 해결 방법 |
@@ -159,7 +211,25 @@
 
 - **Fork**: https://github.com/K-Junha/lab-pilot-demo-ws
 - **Upstream**: https://github.com/InKyu0317/lab-pilot-demo
-- **미커밋**: Phase 5 + Phase 4 (/review, /ship, e2e) 전체 — 커밋 대기 중
+- **lab-pilot-demo 커밋**: `9368502` feat: Phase 6 UI redesign + ws.py UUID fix + README (2026-04-22)
+- **ss_manager 커밋**: `ea78663` feat: GUI app — Electron + Vue/Quasar + Python FastAPI (2026-04-22)
+- **Phase 7 완료**: `pnpm lint` 0 errors, `pnpm build` 성공 (2026-04-22)
+
+---
+
+## Phase 6 — UI Redesign (진행 예정)
+
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| SPEC-ui-redesign.md 작성 | ✅ 완료 | 2026-04-20 |
+| Foundation (app.css + dark mode + 폰트) | ✅ 완료 | 2026-04-21 |
+| MainLayout 재설계 | ✅ 완료 | 2026-04-21 |
+| 7개 페이지 템플릿 재설계 | ✅ 완료 | 2026-04-21 |
+| WorkflowList AG Grid → 그룹 리스트 교체 | ✅ 완료 | 2026-04-21 |
+| pnpm build + e2e 검증 | ✅ 완료 | 2026-04-22 |
+
+> 기반: Claude Design 결과물 `LAB Pilot v2.html` (Dark Scientific Instrument 테마)
+> 범위: 프론트엔드 시각 레이어만 — 스크립트·백엔드·e2e 무변경
 
 ---
 
