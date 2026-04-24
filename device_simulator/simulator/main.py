@@ -46,7 +46,8 @@ def _run_balance(host: str, port: int, name: str) -> None:
     server.start_insecure(host, actual_port)
     logger.info("[balance] 시뮬레이터 시작: %s:%d (%s)", host, actual_port, name)
 
-    print(f"\n  Balance Simulator — {name}")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+    print(f"\n  Balance Simulator -- {name}")
     print(f"  gRPC: {host}:{actual_port}")
     print("  Ctrl+C to stop\n")
 

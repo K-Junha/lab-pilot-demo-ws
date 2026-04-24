@@ -2,23 +2,24 @@
 
 > 상세 내용: tasks/plan.md
 
-## T1 — Balance 시뮬레이터 코어
+## T1 — Balance 시뮬레이터 코어 ✅
 
-- [ ] **1-A** `pyproject.toml` + 패키지 구조 초기화
-- [ ] **1-B** `ss_manager/core/balance/generated/` → `simulator/devices/generated/` 복사
-- [ ] **1-C** `devices/balance.py` — BalanceSimImpl (WeightMeasurementBase 구현, 노이즈 모델)
-- [ ] **1-D** `simulator/main.py` 최소 구현 (argparse + SilaServer + push thread, TUI 없음)
-- [ ] **1-E** `ss_manager/core/main.py` lifespan 분기 (com 없으면 subprocess 미실행)
+- [x] **1-A** `pyproject.toml` + 패키지 구조 초기화
+- [x] **1-B** `ss_manager/core/balance/generated/` → `simulator/devices/generated/` 복사
+- [x] **1-C** `devices/balance.py` — BalanceSimImpl (WeightMeasurementBase 구현, 노이즈 모델)
+- [x] **1-D** `simulator/main.py` 최소 구현 (argparse + SilaServer + push thread, TUI 없음)
+- [x] **1-E** `ss_manager/core/main.py` lifespan 분기 (com 없으면 subprocess 미실행)
 
-**[Checkpoint A]** ss_manager BalanceClient → 시뮬레이터 구독 → lab-pilot 무게값 표시
+**[Checkpoint A]** ✅ SiLA2 클라이언트로 Weight 5회 수신 확인
+> 발견: SiLA2 프레임워크가 zeroconf를 내장 — T2 mdns.py 별도 구현 불필요
 
-## T2 — mDNS + /api/scan + DevicesPage UI
+## T2 — mDNS + /api/scan + DevicesPage UI ✅
 
-- [ ] **2-A** `simulator/mdns.py` — zeroconf ServiceInfo 등록/해제
-- [ ] **2-B** `ss_manager/core/scan.py` — COM 포트 스캔 + mDNS ServiceBrowser
-- [ ] **2-C** `ss_manager/core/main.py` — `GET /scan` 엔드포인트 추가
-- [ ] **2-D** `ss_manager/core/pyproject.toml` — zeroconf 의존성 추가
-- [ ] **2-E** `ss_manager/gui/src/pages/DevicesPage.vue` — 스캔 버튼 + 드롭다운 UI
+- [x] **2-A** `simulator/mdns.py` — SiLA2 내장 zeroconf 사용으로 별도 구현 불필요
+- [x] **2-B** `ss_manager/core/scan.py` — COM 포트 스캔 + mDNS ServiceBrowser (`_sila._tcp.local.`)
+- [x] **2-C** `ss_manager/core/main.py` — `GET /scan` 엔드포인트 추가 (`asyncio.to_thread`)
+- [x] **2-D** `ss_manager/core/pyproject.toml` — `zeroconf>=0.115` 의존성 추가
+- [x] **2-E** `ss_manager/gui/src/pages/DevicesPage.vue` — 스캔 버튼 + 스캔 결과 다이얼로그 UI
 
 **[Checkpoint B]** 시뮬레이터 실행 → DevicesPage 스캔 → 발견 → 등록 → 무게값 수신
 
