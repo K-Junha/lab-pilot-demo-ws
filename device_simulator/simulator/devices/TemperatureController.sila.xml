@@ -1,0 +1,37 @@
+<Feature xmlns="http://www.sila-standard.org" Category="control" FeatureVersion="1.0" Originator="org.silastandard" SiLA2Version="1.0">
+  <Identifier>TemperatureController</Identifier>
+  <DisplayName>Temperature Controller</DisplayName>
+  <Description>전기로 온도 제어 기능을 제공합니다.</Description>
+  <Command>
+    <Identifier>SetTemperature</Identifier>
+    <DisplayName>Set Temperature</DisplayName>
+    <Description>목표 온도를 설정합니다.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>TargetTemperature</Identifier>
+      <DisplayName>Target Temperature</DisplayName>
+      <Description>목표 온도 (°C)</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+  </Command>
+  <Property>
+    <Identifier>CurrentTemperature</Identifier>
+    <DisplayName>Current Temperature</DisplayName>
+    <Description>현재 온도 (°C)</Description>
+    <Observable>Yes</Observable>
+    <DataType>
+      <Basic>Real</Basic>
+    </DataType>
+  </Property>
+  <Property>
+    <Identifier>Setpoint</Identifier>
+    <DisplayName>Setpoint</DisplayName>
+    <Description>현재 목표 온도 (°C)</Description>
+    <Observable>No</Observable>
+    <DataType>
+      <Basic>Real</Basic>
+    </DataType>
+  </Property>
+</Feature>

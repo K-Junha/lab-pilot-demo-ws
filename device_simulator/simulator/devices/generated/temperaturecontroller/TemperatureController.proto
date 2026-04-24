@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+import "SiLAFramework.proto";
+
+package sila2.org.silastandard.control.temperaturecontroller.v1;
+
+/* 전기로 온도 제어 기능을 제공합니다. */
+service TemperatureController {
+  /* 목표 온도를 설정합니다. */
+  rpc SetTemperature (sila2.org.silastandard.control.temperaturecontroller.v1.SetTemperature_Parameters) returns (sila2.org.silastandard.control.temperaturecontroller.v1.SetTemperature_Responses) {}
+  /* 현재 온도 (°C) */
+  rpc Subscribe_CurrentTemperature (sila2.org.silastandard.control.temperaturecontroller.v1.Subscribe_CurrentTemperature_Parameters) returns (stream sila2.org.silastandard.control.temperaturecontroller.v1.Subscribe_CurrentTemperature_Responses) {}
+  /* 현재 목표 온도 (°C) */
+  rpc Get_Setpoint (sila2.org.silastandard.control.temperaturecontroller.v1.Get_Setpoint_Parameters) returns (sila2.org.silastandard.control.temperaturecontroller.v1.Get_Setpoint_Responses) {}
+}
+
+/* Parameters for SetTemperature */
+message SetTemperature_Parameters {
+  sila2.org.silastandard.Real TargetTemperature = 1;  /* 목표 온도 (°C) */
+}
+
+/* Responses of SetTemperature */
+message SetTemperature_Responses {
+}
+
+/* Parameters for CurrentTemperature */
+message Subscribe_CurrentTemperature_Parameters {
+}
+
+/* Responses of CurrentTemperature */
+message Subscribe_CurrentTemperature_Responses {
+  sila2.org.silastandard.Real CurrentTemperature = 1;  /* 현재 온도 (°C) */
+}
+
+/* Parameters for Setpoint */
+message Get_Setpoint_Parameters {
+}
+
+/* Responses of Setpoint */
+message Get_Setpoint_Responses {
+  sila2.org.silastandard.Real Setpoint = 1;  /* 현재 목표 온도 (°C) */
+}

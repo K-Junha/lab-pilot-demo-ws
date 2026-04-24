@@ -1,0 +1,37 @@
+<Feature xmlns="http://www.sila-standard.org" Category="control" FeatureVersion="1.0" Originator="org.silastandard" SiLA2Version="1.0">
+  <Identifier>TemperatureController</Identifier>
+  <DisplayName>Temperature Controller</DisplayName>
+  <Description>&#51204;&#44592;&#47196; &#50728;&#46020; &#51228;&#50612; &#44592;&#45733;&#51012; &#51228;&#44277;&#54633;&#45768;&#45796;.</Description>
+  <Command>
+    <Identifier>SetTemperature</Identifier>
+    <DisplayName>Set Temperature</DisplayName>
+    <Description>&#47785;&#54364; &#50728;&#46020;&#47484; &#49444;&#51221;&#54633;&#45768;&#45796;.</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>TargetTemperature</Identifier>
+      <DisplayName>Target Temperature</DisplayName>
+      <Description>&#47785;&#54364; &#50728;&#46020; (&#176;C)</Description>
+      <DataType>
+        <Basic>Real</Basic>
+      </DataType>
+    </Parameter>
+  </Command>
+  <Property>
+    <Identifier>CurrentTemperature</Identifier>
+    <DisplayName>Current Temperature</DisplayName>
+    <Description>&#54788;&#51116; &#50728;&#46020; (&#176;C)</Description>
+    <Observable>Yes</Observable>
+    <DataType>
+      <Basic>Real</Basic>
+    </DataType>
+  </Property>
+  <Property>
+    <Identifier>Setpoint</Identifier>
+    <DisplayName>Setpoint</DisplayName>
+    <Description>&#54788;&#51116; &#47785;&#54364; &#50728;&#46020; (&#176;C)</Description>
+    <Observable>No</Observable>
+    <DataType>
+      <Basic>Real</Basic>
+    </DataType>
+  </Property>
+</Feature>

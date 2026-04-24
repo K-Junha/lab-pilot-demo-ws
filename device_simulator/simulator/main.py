@@ -59,6 +59,39 @@ def _run_balance(host: str, port: int, name: str) -> None:
         logger.info("[balance] 시뮬레이터 종료")
 
 
+def _run_furnace(host: str, port: int, name: str) -> None:
+    from sila2.server import SilaServer
+    from simulator.devices.furnace import FurnaceSimImpl
+    from simulator.devices.generated.temperaturecontroller import TemperatureControllerFeature
+
+    server = SilaServer(
+        server_name=name,
+        server_description="Virtual Furnace Temperature Controller",
+        server_type="TemperatureController",
+        server_version="0.1",
+        server_vendor_url="https://github.com/K-Junha/lab-pilot-demo-ws",
+        server_uuid=uuid4(),
+    )
+    impl = FurnaceSimImpl(server)
+    server.set_feature_implementation(TemperatureControllerFeature, impl)
+
+    actual_port = port if port != 0 else _find_free_port()
+    server.start_insecure(host, actual_port)
+    logger.info("[furnace] 시뮬레이터 시작: %s:%d (%s)", host, actual_port, name)
+
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+    print(f"\n  Furnace Simulator -- {name}")
+    print(f"  gRPC: {host}:{actual_port}")
+    print("  Ctrl+C to stop\n")
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        impl.stop()
+        logger.info("[furnace] 시뮬레이터 종료")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Virtual SiLA2 Device Simulator")
     parser.add_argument("--device", required=True, choices=["balance", "furnace"],
@@ -75,8 +108,8 @@ def main() -> None:
         name = args.name or "Sim-Balance-01"
         _run_balance(args.host, args.port, name)
     elif args.device == "furnace":
-        print("[simulator] furnace는 T3에서 구현 예정입니다.")
-        sys.exit(1)
+        name = args.name or "Sim-Furnace-01"
+        _run_furnace(args.host, args.port, name)
 
 
 if __name__ == "__main__":
