@@ -1,0 +1,26 @@
+[project]
+name = "device-simulator"
+version = "0.1.0"
+description = "Virtual SiLA2 device simulator for ss_manager development"
+requires-python = ">=3.11"
+dependencies = [
+    "sila2==0.14.0",
+    "zeroconf>=0.115",
+    "rich>=13",
+    "pyserial>=3.5",
+]
+
+[project.scripts]
+simulator = "simulator.main:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["simulator*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

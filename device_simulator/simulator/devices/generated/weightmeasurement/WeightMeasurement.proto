@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+import "SiLAFramework.proto";
+
+package sila2.org.silastandard.measurement.weightmeasurement.v1;
+
+/* 저울 기능을 제공합니다. */
+service WeightMeasurement {
+  /* 영점을 맞춥니다. */
+  rpc SetZero (sila2.org.silastandard.measurement.weightmeasurement.v1.SetZero_Parameters) returns (sila2.org.silastandard.measurement.weightmeasurement.v1.SetZero_Responses) {}
+  /* 현재 무게입니다. */
+  rpc Get_Weight (sila2.org.silastandard.measurement.weightmeasurement.v1.Get_Weight_Parameters) returns (sila2.org.silastandard.measurement.weightmeasurement.v1.Get_Weight_Responses) {}
+}
+
+/* Parameters for SetZero */
+message SetZero_Parameters {
+}
+
+/* Responses of SetZero */
+message SetZero_Responses {
+}
+
+/* Parameters for Weight */
+message Get_Weight_Parameters {
+}
+
+/* Responses of Weight */
+message Get_Weight_Responses {
+  sila2.org.silastandard.Real Weight = 1;  /* 현재 무게입니다. */
+}

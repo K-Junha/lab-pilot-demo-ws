@@ -1,0 +1,20 @@
+<Feature xmlns="http://www.sila-standard.org" Category="measurement" FeatureVersion="1.0" Originator="org.silastandard" SiLA2Version="1.0">
+  <Identifier>WeightMeasurement</Identifier>
+  <DisplayName>Weight Measurement</DisplayName>
+  <Description>&#51200;&#50872; &#44592;&#45733;&#51012; &#51228;&#44277;&#54633;&#45768;&#45796;.</Description>
+  <Command>
+    <Identifier>SetZero</Identifier>
+    <DisplayName>Set Zero</DisplayName>
+    <Description>&#50689;&#51216;&#51012; &#47582;&#52645;&#45768;&#45796;.</Description>
+    <Observable>No</Observable>
+  </Command>
+  <Property>
+    <Identifier>Weight</Identifier>
+    <DisplayName>Weight</DisplayName>
+    <Description>&#54788;&#51116; &#47924;&#44172;&#51077;&#45768;&#45796;.</Description>
+    <Observable>Yes</Observable>
+    <DataType>
+      <Basic>Real</Basic>
+    </DataType>
+  </Property>
+</Feature>
