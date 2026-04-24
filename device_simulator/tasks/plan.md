@@ -300,39 +300,169 @@ sila2.code_generator 실패 시:
 
 ### 작업 내용
 
-**4-A. `simulator/main.py` TUI 통합**
+**4-A. 장치별 패널 렌더 함수 분리**
 ```python
-from rich.live import Live
-from rich.table import Table
-from rich.console import Console
+def _make_balance_panel(impl, name, host, port, start_time) -> Table:
+    # 이름, 포트, Weight(g), 업타임
 
-# 메인 스레드에서 Live 실행
-# SilaServer + push_loop + mDNS는 bg thread로 이동 (이미 daemon)
-
-def make_table(impl) -> Table:
-    # 장치 이름, 타입, 포트
-    # 현재 값 (무게 g / 온도 °C)
-    # mDNS 등록 상태 (✓ / ✗)
-    # Ctrl+C 안내
+def _make_furnace_panel(impl, name, host, port, start_time) -> Table:
+    # 이름, 포트, CurrentTemperature(°C), Setpoint(°C), 업타임
 ```
+- `impl._model.get_weight()` / `impl._model.current_temperature` 직접 읽기 (lock-safe)
+- 업타임: `time.time() - start_time` (프로세스 시작 기준)
 
-**4-B. Ctrl+C 처리**
+**4-B. Rich Live 루프 통합**
 ```python
-try:
-    with Live(make_table(impl), refresh_per_second=4) as live:
-        while True:
-            live.update(make_table(impl))
-            time.sleep(0.25)
+with Live(panel, refresh_per_second=4) as live:
+    while True:
+        live.update(make_panel())
+        time.sleep(0.25)
+```
+- `_run_balance` / `_run_furnace` 각각에 통합 (while True 교체)
+
+**4-C. Ctrl+C 처리 — impl.stop() + server.stop()**
+```python
 except KeyboardInterrupt:
-    mdns.unregister()
-    # push_loop thread는 daemon이므로 자동 종료
+    impl.stop()
+    server.stop()   # ⚠️ 현재 누락 — gRPC 서버 종료 필요
+    logger.info("[balance/furnace] 시뮬레이터 종료")
 ```
+> Opus 위험 분석: 현재 코드는 `impl.stop()`만 호출하고 `server.stop()` 누락.
+> gRPC 서버가 종료되지 않아 포트가 점유된 채 남을 수 있음.
 
 ### 수락 기준
-- 실행 시 Rich TUI 표시 (표 형태)
-- 무게/온도 값이 실시간 갱신 (4회/초)
-- mDNS 등록 상태 표시
-- Ctrl+C 시 mDNS unregister 후 정상 종료
+- 실행 시 Rich TUI 표시 (표 형태, 4회/초 갱신)
+- balance: Weight 실시간 갱신
+- furnace: CurrentTemperature + Setpoint 실시간 갱신
+- Ctrl+C 시 server.stop() → 포트 즉시 해제 확인 (같은 포트 재실행 가능)
+
+### 검증
+```bash
+python -m simulator --device balance --port 50057
+# TUI 확인 후 Ctrl+C
+python -m simulator --device balance --port 50057  # 같은 포트 재실행 성공 확인
+```
+
+---
+
+## T5 — FurnaceClient (ss_manager)
+
+**목표**: ss_manager가 furnace 시뮬레이터에 gRPC로 연결해 온도 데이터를 수신한다.
+
+### 작업 내용
+
+**5-A. `ss_manager/core/clients/furnace.py` 신규**
+
+BalanceClient와 동일 구조:
+```python
+class FurnaceClient(DeviceClient):
+    # reader thread → TemperatureController.CurrentTemperature.subscribe()
+    # _setpoint 캐시: 연결 시 Setpoint.get() 한 번 호출 후 로컬 캐시
+    # get_status() → {"connected": bool, "data": {"CurrentTemperature": float, "Setpoint": float}}
+```
+
+> Opus 위험 분석: Setpoint.get()을 매 tick 호출하면 gRPC 왕복 지연 발생.
+> 연결 시 1회 + SetTemperature 명령 수신 시 캐시 업데이트로 처리.
+
+**5-B. `send_command` 구현**
+```python
+def send_command(self, command, params):
+    if command == "SetTemperature":
+        target = params["target"]   # 명시적 키 매핑 ("target" → TargetTemperature)
+        client.TemperatureController.SetTemperature(TargetTemperature=target)
+        self._setpoint = target     # 캐시 업데이트
+```
+> Opus 위험 분석: `"target"` vs `TargetTemperature` 파라미터 불일치 주의.
+
+**5-C. `tests/test_furnace_client.py` 신규**
+
+BalanceClient 테스트 패턴 동일 — `_client_factory` DI로 mock SilaClient 주입:
+- 연결/단절 상태 전환
+- CurrentTemperature 구독 → `get_status()` 반영
+- SetTemperature 명령 → Setpoint 캐시 업데이트
+
+### 수락 기준
+- mock 기반 단위 테스트 통과
+- 실제 furnace 시뮬레이터에 연결해 `get_status()` 에서 온도값 확인
+
+---
+
+## T6 — ss_manager lifespan furnace 지원
+
+**목표**: ss_manager 시작 시 furnace 장치가 등록되어 있으면 FurnaceClient를 자동으로 시작한다.
+
+### 작업 내용
+
+**6-A. `_clients` 타입 확장**
+```python
+# 변경 전
+_clients: dict[str, BalanceClient] = {}
+
+# 변경 후
+_clients: dict[str, DeviceClient] = {}
+```
+> Opus 위험 분석: 변경 전 `_clients[id]`를 통한 BalanceClient-특화 속성 접근이 있는지
+> 먼저 grep 필수. 확인 후 타입 주석만 변경 (런타임 동작 무변경).
+
+**6-B. lifespan furnace 분기 추가**
+```python
+for cfg in _registry.get_all():
+    if cfg.type == "balance" and cfg.enabled:
+        # 기존 balance 로직 유지
+    elif cfg.type == "furnace" and cfg.enabled:
+        client = FurnaceClient(cfg.id, cfg.name, cfg.config)
+        await client.start()
+        _clients[cfg.id] = client
+        logger.info("[main] FurnaceClient 시작: %s", cfg.id)
+```
+- fail-soft: 연결 실패해도 exception을 잡아 log만 남기고 나머지 장치 계속 시작
+- 여러 장치 동시 지원 (balance 1개 제한 제거)
+
+**6-C. 테스트 업데이트**
+- `test_main.py`: furnace 장치 추가 → lifespan 후 `_clients`에 포함 확인
+
+### 수락 기준
+- balance + furnace 동시 등록 후 ss_manager 시작 → 두 클라이언트 모두 연결
+- 기존 balance 41개 테스트 전부 회귀 없음
+
+---
+
+## [Checkpoint C] — E2E 전체 흐름 검증
+
+**목표**: balance + furnace 시뮬레이터 → scan → 등록 → 실시간 데이터 수신 전 과정 확인.
+
+### 검증 시나리오
+
+```
+1. 시뮬레이터 실행
+   python -m simulator --device balance --port 50057 --name "Sim-Balance-01"
+   python -m simulator --device furnace --port 50058 --name "Sim-Furnace-01"
+
+2. ss_manager 시작 (장치 없이)
+   cd ss_manager/gui && pnpm electron:dev
+
+3. DevicesPage → [스캔]
+   → Sim-Balance-01 (balance) 발견 → [등록]
+   → Sim-Furnace-01 (furnace) 발견 → [등록]
+
+4. ss_manager 재시작
+   → balance: connected, Weight 수신 확인
+   → furnace: connected, CurrentTemperature 수신 확인
+
+5. Rich TUI 확인
+   → 두 터미널에서 TUI 값 갱신 실시간 확인
+
+6. Ctrl+C 종료
+   → ss_manager에서 장치 OFFLINE 전환 확인
+```
+
+### 체크리스트
+- [ ] balance 시뮬레이터 TUI 정상 표시
+- [ ] furnace 시뮬레이터 TUI 정상 표시
+- [ ] /scan에서 두 장치 모두 발견
+- [ ] DevicesPage 스캔 다이얼로그에서 등록 성공
+- [ ] ss_manager 재시작 후 두 장치 CONNECTED
+- [ ] Ctrl+C 후 포트 즉시 재사용 가능
 
 ---
 
@@ -340,10 +470,11 @@ except KeyboardInterrupt:
 
 | 파일 | 테스트 내용 |
 |------|-----------|
-| `tests/test_balance_sim.py` | SiLA2 클라이언트로 구독, 10회 수신 확인, SetZero 후 0 근처 확인 |
-| `tests/test_furnace_sim.py` | 목표 온도 설정, t=300s 수렴 확인 (단위 테스트, gRPC 불필요) |
-| `tests/test_mdns.py` | register → ServiceBrowser 발견 확인 → unregister → 사라짐 확인 |
-| `ss_manager/core/tests/test_scan.py` | mock comports + mock zeroconf, scan_all 응답 형식 검증 |
+| `tests/test_balance_sim.py` | BalanceModel 단위 테스트 ✅ |
+| `tests/test_furnace_sim.py` | FurnaceModel 단위 테스트 ✅ |
+| `ss_manager/core/tests/test_scan.py` | scan_all mock 테스트 ✅ |
+| `ss_manager/core/tests/test_furnace_client.py` | FurnaceClient DI mock 테스트 (신규) |
+| `ss_manager/core/tests/test_main.py` | furnace lifespan 분기 테스트 (추가) |
 
 ---
 
@@ -351,7 +482,8 @@ except KeyboardInterrupt:
 
 | 위험 | 대응 |
 |------|------|
-| Furnace sila2.code_generator 실패 | T3-A 스파이크 먼저 — 실패 시 수동 스텁 fallback |
-| mDNS Windows Firewall 차단 | 수동 입력 필드 유지, 문서에 방화벽 허용 규칙 안내 |
-| WeightMeasurement XML 변경 시 불일치 | generated/ 복사본에 주석으로 원본 경로 명시 |
-| SilaServer.start_insecure 블로킹 여부 | T1 구현 시 즉시 검증 (balance_server.py 패턴 참고) |
+| `server.stop()` API 없음 | SilaServer stop 메서드 확인 — 없으면 gRPC channel 직접 종료 |
+| `_clients` 타입 확장 시 콜 사이트 깨짐 | 변경 전 `grep "_clients\[" *.py` 필수 |
+| Setpoint gRPC 지연 | 연결 시 1회 캐시, SetTemperature 시 캐시 업데이트 |
+| Windows Ctrl+C + Rich Live | KeyboardInterrupt는 Windows에서 flaky — signal.signal(SIGINT) 백업 |
+| 여러 balance 동시 등록 시 기존 "1개만 지원" 제한 제거 | lifespan loop 리팩토링으로 처리 |
