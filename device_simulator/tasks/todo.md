@@ -23,12 +23,12 @@
 
 **[Checkpoint B]** 시뮬레이터 실행 → DevicesPage 스캔 → 발견 → 등록 → 무게값 수신
 
-## T3 — Furnace 시뮬레이터
+## T3 — Furnace 시뮬레이터 ✅
 
-- [ ] **3-A** ⚠️ 스파이크: sila2.code_generator로 TemperatureController.sila.xml 생성 검증
-- [ ] **3-B** `devices/furnace.py` — FurnaceSimImpl (1차 지연계 열 모델)
-- [ ] **3-C** `simulator/main.py` — furnace 분기 추가
-- [ ] **3-D** `DevicesPage.vue` — furnace 타입 항목 표시
+- [x] **3-A** ⚠️ 스파이크: sila2.code_generator로 TemperatureController.sila.xml 생성 검증 — 성공 (sila2[codegen] 설치 필요)
+- [x] **3-B** `devices/furnace.py` — FurnaceSimImpl (1차 지연계 열 모델, tau=30s)
+- [x] **3-C** `simulator/main.py` — furnace 분기 추가
+- [x] **3-D** `DevicesPage.vue` — furnace 타입 항목 표시 + balance 시뮬레이터 모드 지원
 
 ## T4 — Rich TUI
 
