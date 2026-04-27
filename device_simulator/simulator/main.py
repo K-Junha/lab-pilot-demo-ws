@@ -13,17 +13,62 @@ import sys
 import time
 from uuid import uuid4
 
+from rich.console import Console
+from rich.live import Live
+from rich.table import Table
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s - %(message)s",
 )
 logger = logging.getLogger("simulator")
+console = Console()
 
 
 def _find_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("", 0))
         return s.getsockname()[1]
+
+
+def _fmt_uptime(seconds: float) -> str:
+    m, s = divmod(int(seconds), 60)
+    h, m = divmod(m, 60)
+    return f"{h:02d}:{m:02d}:{s:02d}"
+
+
+def _make_balance_panel(impl, name: str, host: str, port: int, start: float) -> Table:
+    weight = impl._model.get_weight()
+    uptime = time.time() - start
+
+    t = Table(show_header=False, box=None, padding=(0, 2))
+    t.add_column("key", style="dim")
+    t.add_column("value", style="bold")
+    t.add_row("Device", f"[cyan]{name}[/cyan]  [dim]balance[/dim]")
+    t.add_row("gRPC", f"{host}:{port}")
+    t.add_row("Weight", f"[green]{weight:+.4f}[/green] g")
+    t.add_row("Uptime", _fmt_uptime(uptime))
+    t.add_row("", "[dim]Ctrl+C to stop[/dim]")
+    return t
+
+
+def _make_furnace_panel(impl, name: str, host: str, port: int, start: float) -> Table:
+    temp = impl._model.current_temperature
+    setpoint = impl._model.setpoint
+    uptime = time.time() - start
+
+    temp_color = "red" if temp > setpoint + 1 else ("yellow" if abs(temp - setpoint) > 1 else "green")
+
+    t = Table(show_header=False, box=None, padding=(0, 2))
+    t.add_column("key", style="dim")
+    t.add_column("value", style="bold")
+    t.add_row("Device", f"[cyan]{name}[/cyan]  [dim]furnace[/dim]")
+    t.add_row("gRPC", f"{host}:{port}")
+    t.add_row("Temp", f"[{temp_color}]{temp:6.1f}[/{temp_color}] °C")
+    t.add_row("Setpoint", f"{setpoint:6.1f} °C")
+    t.add_row("Uptime", _fmt_uptime(uptime))
+    t.add_row("", "[dim]Ctrl+C to stop[/dim]")
+    return t
 
 
 def _run_balance(host: str, port: int, name: str) -> None:
@@ -46,16 +91,17 @@ def _run_balance(host: str, port: int, name: str) -> None:
     server.start_insecure(host, actual_port)
     logger.info("[balance] 시뮬레이터 시작: %s:%d (%s)", host, actual_port, name)
 
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
-    print(f"\n  Balance Simulator -- {name}")
-    print(f"  gRPC: {host}:{actual_port}")
-    print("  Ctrl+C to stop\n")
-
+    start = time.time()
     try:
-        while True:
-            time.sleep(1)
+        with Live(console=console, refresh_per_second=4, screen=False) as live:
+            while True:
+                live.update(_make_balance_panel(impl, name, host, actual_port, start))
+                time.sleep(0.25)
     except KeyboardInterrupt:
+        pass
+    finally:
         impl.stop()
+        server.stop()
         logger.info("[balance] 시뮬레이터 종료")
 
 
@@ -79,16 +125,17 @@ def _run_furnace(host: str, port: int, name: str) -> None:
     server.start_insecure(host, actual_port)
     logger.info("[furnace] 시뮬레이터 시작: %s:%d (%s)", host, actual_port, name)
 
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
-    print(f"\n  Furnace Simulator -- {name}")
-    print(f"  gRPC: {host}:{actual_port}")
-    print("  Ctrl+C to stop\n")
-
+    start = time.time()
     try:
-        while True:
-            time.sleep(1)
+        with Live(console=console, refresh_per_second=4, screen=False) as live:
+            while True:
+                live.update(_make_furnace_panel(impl, name, host, actual_port, start))
+                time.sleep(0.25)
     except KeyboardInterrupt:
+        pass
+    finally:
         impl.stop()
+        server.stop()
         logger.info("[furnace] 시뮬레이터 종료")
 
 
