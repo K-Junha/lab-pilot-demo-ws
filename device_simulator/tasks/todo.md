@@ -30,23 +30,23 @@
 - [x] **3-C** `simulator/main.py` — furnace 분기 추가
 - [x] **3-D** `DevicesPage.vue` — furnace 타입 항목 표시 + balance 시뮬레이터 모드 지원
 
-## T4 — Rich TUI
+## T4 — Rich TUI ✅
 
-- [ ] **4-A** `simulator/main.py` — balance/furnace 별 패널 렌더 함수 분리 (`_make_balance_panel`, `_make_furnace_panel`)
-- [ ] **4-B** Rich Live 루프 통합 — `while True: sleep(1)` 교체 (4회/초 갱신)
-- [ ] **4-C** Ctrl+C — `impl.stop()` + `server.stop()` 후 정상 종료 (server.stop 현재 누락)
+- [x] **4-A** `simulator/main.py` — balance/furnace 별 패널 렌더 함수 분리 (`_make_balance_panel`, `_make_furnace_panel`)
+- [x] **4-B** Rich Live 루프 통합 — `while True: sleep(1)` 교체 (4회/초 갱신)
+- [x] **4-C** Ctrl+C — `impl.stop()` + `server.stop()` 후 정상 종료 (server.stop 현재 누락)
 
-## T5 — FurnaceClient (ss_manager)
+## T5 — FurnaceClient (ss_manager) ✅
 
-- [ ] **5-A** `ss_manager/core/clients/furnace.py` 신규 — CurrentTemperature 구독, Setpoint 캐시
-- [ ] **5-B** `send_command("SetTemperature", {"target": ...})` → gRPC 호출 + 캐시 업데이트
-- [ ] **5-C** `ss_manager/core/tests/test_furnace_client.py` 신규 — _client_factory DI mock 테스트
+- [x] **5-A** `ss_manager/core/clients/furnace.py` 신규 — CurrentTemperature 구독, Setpoint 캐시
+- [x] **5-B** `send_command("SetTemperature", {"target": ...})` → gRPC 호출 + 캐시 업데이트
+- [x] **5-C** `ss_manager/core/tests/test_furnace_client.py` 신규 — _client_factory DI mock 테스트
 
-## T6 — ss_manager lifespan furnace 지원
+## T6 — ss_manager lifespan furnace 지원 ✅
 
-- [ ] **6-A** `_clients` 타입 `dict[str, DeviceClient]`으로 확장 (콜 사이트 grep 후 타입 주석 변경)
-- [ ] **6-B** lifespan에 furnace 분기 추가 (fail-soft, 다중 장치 지원)
-- [ ] **6-C** `tests/test_main.py` — furnace 장치 lifespan 테스트 추가
+- [x] **6-A** `_clients` 타입 `dict[str, DeviceClient]`으로 확장 (콜 사이트 grep 후 타입 주석 변경)
+- [x] **6-B** lifespan에 furnace 분기 추가 (fail-soft, 다중 장치 지원)
+- [x] **6-C** `tests/test_main.py` — furnace 장치 lifespan 테스트 추가
 
 ## [Checkpoint C] — E2E 검증
 
